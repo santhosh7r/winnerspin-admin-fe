@@ -26,45 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { MoreHorizontal, Eye, Search, Trash2 } from "lucide-react";
+import type { Customer } from "@/lib/types";
 
 // ----------------------
 // TYPES
 // ----------------------
-interface Season {
-  _id: string;
-  season?: string;
-}
-
-interface Promoter {
-  _id: string;
-  username?: string;
-}
-
-interface Customer {
-  _id: string;
-  username: string;
-  email: string;
-  cardNo?: string;
-  status: "pending" | "approved" | "rejected";
-  // promoterId?: string;
-  promoterName?: string;
-  // seasonId?: string;
-  seasonName?: string;
-  createdAt: string;
-  promoter?: Promoter;
-  seasons?: Season[];
-}
 
 interface CustomerTableProps {
   customers: Customer[];

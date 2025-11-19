@@ -151,9 +151,9 @@ export interface Customer {
   // ✅ Make this REQUIRED (not optional)
   status: "pending" | "approved" | "rejected";
 
-  promoterId?: string | null;
+  promoterId?: string;
   promoterName?: string;
-  seasonId?: string | null;
+  seasonId?: string;
   seasonName?: string;
   createdAt: string;
   updatedAt?: string;

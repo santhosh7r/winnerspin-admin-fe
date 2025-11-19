@@ -203,6 +203,7 @@
 
 import { useEffect, useState } from "react";
 import { posterAPI } from "@/lib/api";
+import Image from "next/image";
 import Loader from "@/components/loader";
 import type { Poster } from "@/lib/types";
 
@@ -383,12 +384,14 @@ export default function PosterManager() {
                 key={poster._id}
                 className="bg-white border rounded-lg shadow-sm p-3"
               >
-                <img
-                  src={poster.url}
-                  alt={poster.name}
-                  className="w-full h-48 object-cover rounded"
-                />
-
+                <div className="relative w-full h-48">
+                  <Image
+                    src={poster.url}
+                    alt={poster.name}
+                    className="object-cover rounded"
+                    fill
+                  />
+                </div>
                 <div className="mt-3 space-y-1">
                   <p className="font-semibold">{poster.name}</p>
                   <p className="text-sm text-gray-600">
