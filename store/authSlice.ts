@@ -21,7 +21,9 @@ export const loginAdmin = createAsyncThunk(
   "auth/loginAdmin",
   async ({ username, password }: { username: string; password: string }) => {
     const response = await fetch("https://api.winnerspin.in.net/admin/login", {
-      method: "POST",
+    // const response = await fetch("http://localhost:3000/admin/login", {
+
+    method: "POST",
       headers: {
         "Content-Type": "application/json",
       },

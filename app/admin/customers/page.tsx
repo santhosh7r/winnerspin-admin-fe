@@ -17,6 +17,17 @@ import { customerAPI } from "@/lib/api";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 // ✅ use unified type from lib/types.ts
 import type { Customer } from "@/lib/types";
 
@@ -25,6 +36,10 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -111,6 +126,28 @@ setCustomers(
       alert(msg);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleDeleteRequest = (customer: Customer) => {
+    setCustomerToDelete(customer);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!customerToDelete) return;
+
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await customerAPI.delete(customerToDelete._id);
+      setCustomers((prev) =>
+        prev.filter((c) => c._id !== customerToDelete._id)
+      );
+      setCustomerToDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete customer");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -208,12 +245,40 @@ setCustomers(
                   customers={customers}
                   loading={false}
                   showActions={true}
+                  onDelete={handleDeleteRequest}
                 />
               </CardContent>
             </Card>
           )}
         </div>
       )}
+
+      <AlertDialog
+        open={!!customerToDelete}
+        onOpenChange={() => setCustomerToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete customer{" "}
+              <b>{customerToDelete?.username}</b>? This will permanently remove
+              all their associated records, including installments and
+              transaction history. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -26,7 +26,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { MoreHorizontal, Eye, Search, Trash2 } from "lucide-react";
 
 // ----------------------
 // TYPES
@@ -61,6 +71,7 @@ interface CustomerTableProps {
   loading?: boolean;
   showActions?: boolean;
   onReject?: (customer: Customer) => void;
+  onDelete?: (customer: Customer) => void;
   handleApprove?: (customer: {
     customerId: string;
     promoterId: string;
@@ -78,12 +89,14 @@ export function CustomerTable({
   showActions = true,
   onReject,
   handleApprove,
+  onDelete,
   fetchNewCustomers,
 }: CustomerTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [promoterFilter, setPromoterFilter] = useState("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
 
   // Filter logic
   const filteredCustomers = customers.filter((customer) => {
@@ -275,6 +288,16 @@ export function CustomerTable({
                               {approvingId === customer._id
                                 ? "Approving..."
                                 : "Approve"}
+                            </DropdownMenuItem>
+                          )}
+
+                          {onDelete && (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => onDelete(customer)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
                             </DropdownMenuItem>
                           )}
 
