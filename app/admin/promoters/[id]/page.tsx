@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,32 +9,42 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { promoterAPI } from "@/lib/api";
 import {
   ArrowLeft,
-  Edit,
-  Mail,
-  Phone,
-  IndianRupeeIcon,
-  Users,
-  MapPin,
-  Landmark,
   CreditCard,
+  Edit,
+  IndianRupeeIcon,
+  Landmark,
+  Mail,
+  MapPin,
+  Phone,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Customer {
   _id: string;
   username: string;
   email: string;
-  mobNo: string;
+  cardNo: string;
 }
 
 interface Season {
   seasonId: string;
   seasonName?: string;
+  statusChangedAt: string | null;
   status: "approved" | "unapproved" | "inactive";
   balance: number;
   customers: Customer[];
@@ -152,6 +161,26 @@ export default function PromoterDetailPage() {
         </Button>
       </div>
 
+      {/* Highlighted Status Change Date */}
+      {promoter.seasons.length > 0 &&
+        (promoter.seasons[0].statusChangedAt ? (
+          <div className="text-center p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">Last Status Update</p>
+            <p className="text-xl font-bold text-red-800">
+              {new Date(promoter.seasons[0].statusChangedAt).toLocaleDateString(
+                "en-US",
+                { year: "numeric", month: "long", day: "numeric" }
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="text-center p-3 bg-red-100 border border-red-300 rounded-lg">
+            <p className="text-lg font-semibold text-red-700">
+              Status change date not available
+            </p>
+          </div>
+        ))}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Promoter Info */}
         <div className="lg:col-span-2">
@@ -260,6 +289,17 @@ export default function PromoterDetailPage() {
                           {s.status}
                         </Badge>
                       </div>
+                      <div className="text-xs text-muted-foreground">
+                        {s.statusChangedAt
+                          ? `Status changed on: ${new Date(
+                              s.statusChangedAt
+                            ).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}`
+                          : "Status change date not available"}
+                      </div>
                       <div className="flex items-center gap-2">
                         <IndianRupeeIcon className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">
@@ -269,17 +309,30 @@ export default function PromoterDetailPage() {
 
                       {/* Customers */}
                       <div className="mt-2">
-                        <p className="text-sm text-muted-foreground">
-                          Customers
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Customers ({s.customers.length})
                         </p>
                         {s.customers.length > 0 ? (
-                          <ul className="list-disc ml-6">
-                            {s.customers.map((c) => (
-                              <li key={c._id}>
-                                {c.username} ({c.email}, {c.mobNo})
-                              </li>
-                            ))}
-                          </ul>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[50px]">S.No</TableHead>
+                                <TableHead>Username</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Card No.</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {s.customers.map((c, index) => (
+                                <TableRow key={c._id}>
+                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>{c.username}</TableCell>
+                                  <TableCell>{c.email}</TableCell>
+                                  <TableCell>{c.cardNo}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         ) : (
                           <p className="text-sm text-gray-500">No customers</p>
                         )}
