@@ -283,14 +283,16 @@ export interface SeasonFormData {
 
 interface SeasonFormProps {
   initialData?: Partial<SeasonFormData>;
-  onSubmit: (data: SeasonFormData) => Promise<void>;
+  onSubmit: (data: SeasonFormData) => Promise<any>;
   isEditing?: boolean;
+  hidePromoters?: boolean;
 }
 
 export function SeasonForm({
   initialData,
   onSubmit,
   isEditing = false,
+  hidePromoters = false,
 }: SeasonFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -344,8 +346,12 @@ export function SeasonForm({
     setError(null);
 
     try {
-      await onSubmit(formData);
-      router.push("/admin/seasons");
+      const res = await onSubmit(formData);
+      if (res && res.stay) {
+        // do not redirect, handled by parent
+      } else {
+        router.push("/admin/seasons");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -492,7 +498,7 @@ export function SeasonForm({
         </CardContent>
       </Card>
 
-      {!promotersLoading && (
+      {!hidePromoters && !promotersLoading && (
         <PromoterSelector
           promoters={previousSeasonPromoters}
           selectedPromoters={formData.approvedPromoters}

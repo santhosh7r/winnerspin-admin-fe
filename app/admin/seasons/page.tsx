@@ -347,7 +347,7 @@ interface SeasonItem {
   endDate: string;
   amount?: string | number;
   totalInstallment?: string | number;
-  approvedPromoters?: string[];
+  activePromoters?: string[];
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
@@ -484,10 +484,10 @@ export default function SeasonsPage() {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">
-                  Approved Promoters
+                  Active Promoters
                 </div>
                 <div className="font-semibold">
-                  {(curSeason.approvedPromoters || []).length}
+                  {(curSeason.activePromoters || []).length}
                 </div>
               </div>
             </div>
@@ -568,7 +568,7 @@ export default function SeasonsPage() {
                     <td className="px-2 py-3">{s.amount ?? "-"}</td>
                     <td className="px-2 py-3">{s.totalInstallment ?? "-"}</td>
                     <td className="px-2 py-3">
-                      {(s.approvedPromoters || []).length}
+                      {(s.activePromoters || []).length}
                     </td>
                     <td className="px-2 py-3">
                       {getSeasonStatus(s.startDate, s.endDate)}

@@ -3,8 +3,8 @@
 // ===========================
 // BASE CONFIG
 // ===========================
-export const API_BASE_URL = "https://api.winnerspin.in.net/admin";
-// export const API_BASE_URL = "http://localhost:3000/admin";
+// export const API_BASE_URL = "https://api.winnerspin.in.net/admin";
+export const API_BASE_URL = "http://localhost:3000/admin";
 
 
 export const apiRequest = async (
@@ -74,9 +74,20 @@ export const promoterAPI = {
       body: JSON.stringify({ promoterId, isActive }),
     }),
 
+  activateForSeason: (promoterId: string, seasonId: string, activate: boolean) =>
+    apiRequest("/activate-promoter-for-season", {
+      method: "POST",
+      body: JSON.stringify({ promoterId, seasonId, activate }),
+    }),
+
   getById: (id: string, params?: { seasonId?: string }) => {
     const query = params?.seasonId ? `?seasonId=${params.seasonId}` : "";
     return apiRequest(`/get-promoter/${id}${query}`);
+  },
+
+  getNetwork: (promoterId: string, seasonId?: string) => {
+    const query = seasonId ? `?seasonId=${seasonId}` : "";
+    return apiRequest(`/promoter-network/${promoterId}${query}`);
   },
 
   updateProfile: (

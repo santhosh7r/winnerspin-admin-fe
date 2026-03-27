@@ -20,10 +20,10 @@ const initialState: AuthState = {
 export const loginAdmin = createAsyncThunk(
   "auth/loginAdmin",
   async ({ username, password }: { username: string; password: string }) => {
-    const response = await fetch("https://api.winnerspin.in.net/admin/login", {
-    // const response = await fetch("http://localhost:3000/admin/login", {
+    // const response = await fetch("https://api.winnerspin.in.net/admin/login", {
+    const response = await fetch("http://localhost:3000/admin/login", {
 
-    method: "POST",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },

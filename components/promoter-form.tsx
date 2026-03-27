@@ -28,7 +28,6 @@ export interface PromoterFormData {
   username: string;
   email: string;
   mobNo: string;
-  status: "approved" | "unapproved";
   isActive: boolean;
   address: string;
   city: string;
@@ -56,7 +55,6 @@ export function PromoterForm({
     username: initialData.username || "",
     email: initialData.email || "",
     mobNo: initialData.mobNo || "",
-    status: initialData.status || "unapproved",
     isActive: initialData.isActive ?? true,
     address: initialData.address || "",
     city: initialData.city || "",
@@ -233,23 +231,7 @@ export function PromoterForm({
 
           {/* Status + Active */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Status *</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: "approved" | "unapproved") =>
-                  handleChange("status", value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="unapproved">Unapproved</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
 
             <div className="space-y-2">
               <Label>Activate / Deactivate *</Label>

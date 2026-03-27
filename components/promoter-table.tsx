@@ -1,4 +1,3 @@
-//
 "use client";
 
 import { useState } from "react";
@@ -20,76 +19,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MoreHorizontal, Eye, Edit, Search } from "lucide-react";
+import { Search, Eye, Power, AlertCircle, PlayCircle, StopCircle, UserMinus } from "lucide-react";
 import { promoterAPI } from "@/lib/api";
-
-export interface Promoter {
-  _id: string;
-  userid?: string;
-  username: string;
-  email: string;
-  mobNo: string;
-  status: "approved" | "unapproved" | "inactive";
-  isActive: boolean;
-  balance?: number;
-  customers?: string[];
-}
+import { Promoter } from "@/app/admin/promoters/page";
 
 interface PromoterTableProps {
-  approvedPromoters?: Promoter[];
-  nonApprovedPromoters?: Promoter[];
-  inactivePromoters?: Promoter[];
-  allInactivePromoters?: Promoter[];
+  promoters: Promoter[];
   loading?: boolean;
-  onDelete: (promoterId: string) => void;
+  onUpdate: () => void;
 }
 
 export function PromoterTable({
-  approvedPromoters = [],
-  nonApprovedPromoters = [],
-  inactivePromoters = [],
-  allInactivePromoters = [],
+  promoters,
   loading,
-  onDelete,
+  onUpdate,
 }: PromoterTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [deletePromoter, setDeletePromoter] = useState<Promoter | null>(null);
-  const [tab, setTab] = useState<
-    "all" | "approved" | "unapproved" | "inactive"
-  >("all");
 
-  const allPromoters: Promoter[] = [
-    ...(approvedPromoters || []),
-    ...(nonApprovedPromoters || []),
-    ...(inactivePromoters || []),
-  ].map((p) => ({
-    balance: 0,
-    customers: [],
-    userid: p.userid ?? p.username,
-    ...p,
-  }));
-
-  const tabFilteredPromoters: Promoter[] =
-    tab === "approved"
-      ? allPromoters.filter((p) => p.status === "approved" && p.isActive)
-      : tab === "unapproved"
-      ? allPromoters.filter((p) => p.status !== "approved" && p.isActive)
-      : tab === "inactive"
-      ? (allInactivePromoters as Promoter[])
-      : allPromoters;
-
-  const filteredPromoters = tabFilteredPromoters.filter((p) => {
+  const filteredPromoters = promoters.filter((p) => {
     const s = searchTerm.toLowerCase();
     return (
       (p.username ?? "").toLowerCase().includes(s) ||
@@ -98,33 +45,29 @@ export function PromoterTable({
     );
   });
 
-  const getStatusColor = (promoter: Promoter) => {
-    if (!promoter.isActive || promoter.status === "inactive")
-      return " bg-red-100 text-red-800";
-    switch (promoter.status) {
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "unapproved":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const handleToggleGlobalLogin = async (promoter: Promoter) => {
+    const confirmMessage = promoter.isActive
+      ? "⚠ Deactivating this promoter will block their login access globally. Their network remains intact."
+      : "Activate this promoter to allow them to login globally?";
+
+    if (confirm(confirmMessage)) {
+      try {
+        await promoterAPI.toggleStatus(promoter._id, !promoter.isActive);
+        onUpdate();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Failed to toggle global login");
+      }
     }
   };
 
-  const handleDelete = async () => {
-    if (deletePromoter) {
-      try {
-        await promoterAPI.toggleStatus(
-          deletePromoter._id,
-          !deletePromoter.isActive
-        );
-        onDelete(deletePromoter._id);
-        setDeletePromoter(null);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to delete promoter";
-        alert(message);
-      }
+  const handleToggleSeason = async (promoter: Promoter, activate: boolean) => {
+    try {
+      const selectedSeason = localStorage.getItem("selectedSeason");
+      if (!selectedSeason) return alert("Select a season first!");
+      await promoterAPI.activateForSeason(promoter._id, selectedSeason, activate);
+      onUpdate();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to toggle season status");
     }
   };
 
@@ -141,27 +84,13 @@ export function PromoterTable({
 
   return (
     <div className="space-y-4">
-      <Tabs
-        value={tab}
-        onValueChange={(v: string) =>
-          setTab(v as "all" | "approved" | "unapproved" | "inactive")
-        }
-      >
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="unapproved">Unapproved</TabsTrigger>
-          <TabsTrigger value="inactive">Inactive</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
           placeholder="Search promoters by name, email, or ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="pl-10 max-w-sm"
         />
       </div>
 
@@ -169,13 +98,14 @@ export function PromoterTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Promoter ID</TableHead>
-              <TableHead>Username</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Recruited By</TableHead>
+              <TableHead>Season Active</TableHead>
+              <TableHead>Self Customers</TableHead>
+              <TableHead>Sub-Promoters</TableHead>
               <TableHead>Balance</TableHead>
-              <TableHead>Customers</TableHead>
+              <TableHead>Login</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -183,7 +113,7 @@ export function PromoterTable({
             {filteredPromoters.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No promoters found
@@ -192,54 +122,81 @@ export function PromoterTable({
             ) : (
               filteredPromoters.map((promoter) => (
                 <TableRow key={promoter._id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium whitespace-nowrap">
                     {promoter.userid}
                   </TableCell>
                   <TableCell>{promoter.username}</TableCell>
-                  <TableCell>{promoter.email}</TableCell>
-                  <TableCell>{promoter.mobNo}</TableCell>
+                  <TableCell>
+                    {promoter.recruitedBy?.type === "promoter" && promoter.recruitedBy.promoter
+                      ? promoter.recruitedBy.promoter.username
+                      : "Admin"}
+                  </TableCell>
                   <TableCell>
                     <Badge
-                      variant="secondary"
-                      className={getStatusColor(promoter)}
+                      variant={promoter.isActiveInSeason ? "default" : "secondary"}
+                      className={promoter.isActiveInSeason ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}
                     >
-                      {!promoter.isActive || promoter.status === "inactive"
-                        ? "Inactive"
-                        : promoter.status}
+                      {promoter.isActiveInSeason ? "Active" : "Inactive"}
                     </Badge>
+                  </TableCell>
+                  <TableCell>{promoter.selfMadeCustomerCount || 0}</TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/admin/promoters/${promoter._id}/network`}
+                      className="text-blue-600 hover:underline hover:text-blue-800"
+                    >
+                      {promoter.directSubPromoterCount || 0}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     ₹{promoter.balance?.toLocaleString() || 0}
                   </TableCell>
-                  <TableCell>{promoter.customers?.length || 0}</TableCell>
+                  <TableCell>
+                    <Badge variant={promoter.isActive ? "outline" : "destructive"}>
+                      {promoter.isActive ? "Can Login" : "Blocked"}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                           <Link href={`/admin/promoters/${promoter._id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
+                            <AlertCircle className="mr-2 h-4 w-4" />
+                            View Profile
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/promoters/${promoter._id}/edit`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                        {/* Deactivate with confirm dialog if needed */}
-                        {/* <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => setDeletePromoter(promoter)}
+
+                        {promoter.isActiveInSeason ? (
+                          <DropdownMenuItem onClick={() => handleToggleSeason(promoter, false)}>
+                            <StopCircle className="mr-2 h-4 w-4 text-orange-500" />
+                            Deactivate for Season
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => handleToggleSeason(promoter, true)}>
+                            <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
+                            Activate for Season
+                          </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuItem
+                          className={promoter.isActive ? "text-red-500" : "text-green-500"}
+                          onClick={() => handleToggleGlobalLogin(promoter)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Deactivate
-                        </DropdownMenuItem> */}
+                          {promoter.isActive ? (
+                            <>
+                              <UserMinus className="mr-2 h-4 w-4" /> Block Login
+                            </>
+                          ) : (
+                            <>
+                              <Power className="mr-2 h-4 w-4" /> Unblock Login
+                            </>
+                          )}
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -249,30 +206,6 @@ export function PromoterTable({
           </TableBody>
         </Table>
       </div>
-
-      <AlertDialog
-        open={!!deletePromoter}
-        onOpenChange={() => setDeletePromoter(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Promoter</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete promoter{" "}
-              {deletePromoter?.username}? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

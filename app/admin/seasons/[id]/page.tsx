@@ -38,7 +38,7 @@ interface Season {
   startDate: string;
   endDate: string;
   amount: number;
-  approvedPromoters: string[];
+  activePromoters: string[];
   createdAt: string;
 }
 
@@ -75,14 +75,14 @@ export default function SeasonDetailPage() {
 
       setSeason(seasonResponse);
 
-      // Filter promoters to only those approved for this season
+      // Filter promoters to only those active for this season
       const allPromoters = promotersResponse?.allPromoters ?? [];
-      const approvedPromoters =
+      const activePromoters =
         allPromoters.filter((p: Promoter) =>
-          seasonResponse.approvedPromoters.includes(p._id)
+          seasonResponse.activePromoters?.includes(p._id)
         ) || [];
 
-      setPromoters(approvedPromoters);
+      setPromoters(activePromoters);
     } catch (err) {
       console.error("Failed to fetch season details:", err);
       setError(
@@ -228,10 +228,10 @@ export default function SeasonDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Approved Promoters */}
+          {/* Active Promoters */}
           <Card>
             <CardHeader>
-              <CardTitle>Approved Promoters</CardTitle>
+              <CardTitle>Active Promoters</CardTitle>
               <CardDescription>
                 Promoters participating in this season
               </CardDescription>
@@ -263,12 +263,12 @@ export default function SeasonDetailPage() {
                           <Badge
                             variant="secondary"
                             className={
-                              promoter.status === "approved"
+                              seasonResponse.activePromoters?.includes(promoter._id)
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             }
                           >
-                            {promoter.status}
+                            {seasonResponse.activePromoters?.includes(promoter._id) ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -290,10 +290,10 @@ export default function SeasonDetailPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Approved Promoters</span>
+                  <span className="text-sm">Active Promoters</span>
                 </div>
                 <span className="font-bold text-lg">
-                  {season.approvedPromoters.length}
+                  {season.activePromoters?.length || 0}
                 </span>
               </div>
               <Separator />

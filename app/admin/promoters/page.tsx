@@ -1,34 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { promoterAPI } from "@/lib/api";
 import { PromoterTable } from "@/components/promoter-table";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Loader from "@/components/loader";
 import { Download } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Promoter = {
+export type Promoter = {
   _id: string;
   userid: string;
   username: string;
   email: string;
   mobNo: string;
-  status: "approved" | "unapproved" | "inactive";
   isActive: boolean;
+  isActiveInSeason: boolean;
   balance: number;
-  customers: string[];
+  recruitedBy: any;
+  selfMadeCustomerCount: number;
+  directSubPromoterCount: number;
 };
 
 export default function PromotersPage() {
-  const [approvedPromoters, setApprovedPromoters] = useState<Promoter[]>([]);
-  const [nonApprovedPromoters, setNonApprovedPromoters] = useState<Promoter[]>(
-    []
-  );
-  const [inactivePromoters, setInactivePromoters] = useState<Promoter[]>([]);
-  const [allInactivePromoters, setAllInactivePromoters] = useState<Promoter[]>(
-    []
-  );
+  const [promoters, setPromoters] = useState<Promoter[]>([]);
+  const [counts, setCounts] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,39 +39,9 @@ export default function PromotersPage() {
         throw new Error("No season selected in local storage");
 
       const response = await promoterAPI.getAll(selectedSeason);
-      // console.log("Promoters API response:", response);
 
-      const normalize = (
-        list: Promoter[],
-        status: "approved" | "unapproved" | "inactive",
-        isActive: boolean
-      ): Promoter[] =>
-        list.map((p) => ({
-          _id: String(p?._id ?? ""),
-          userid: String(p?.userid ?? p?.username ?? ""),
-          username: String(p?.username ?? ""),
-          email: String(p?.email ?? ""),
-          mobNo: String(p?.mobNo ?? ""),
-          status,
-          isActive,
-          balance: Number(p?.balance ?? 0),
-          customers: Array.isArray(p?.customers)
-            ? (p.customers as string[])
-            : [],
-        }));
-
-      setApprovedPromoters(
-        normalize(response.approvedPromoters ?? [], "approved", true)
-      );
-      setNonApprovedPromoters(
-        normalize(response.nonApprovedPromoters ?? [], "unapproved", true)
-      );
-      setInactivePromoters(
-        normalize(response.inactivePromoters ?? [], "inactive", false)
-      );
-      setAllInactivePromoters(
-        normalize(response.allInactivePromoters ?? [], "inactive", true)
-      );
+      setPromoters(response.promoters || []);
+      setCounts(response.counts || null);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch promoters"
@@ -82,46 +49,31 @@ export default function PromotersPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // ✅ Dependencies for fetchPromoters (none here)
+  }, []);
 
-  // ✅ Effect that runs only once and calls the stable function
   useEffect(() => {
     fetchPromoters();
   }, [fetchPromoters]);
-
-  // Merge all unique promoters for export
-  const allForExport: Promoter[] = useMemo(() => {
-    const map = new Map<string, Promoter>();
-    const pushAll = (arr: Promoter[]) => {
-      for (const p of arr) map.set(p._id, p);
-    };
-    pushAll(approvedPromoters);
-    pushAll(nonApprovedPromoters);
-    pushAll(inactivePromoters);
-    pushAll(allInactivePromoters);
-    return Array.from(map.values());
-  }, [
-    approvedPromoters,
-    nonApprovedPromoters,
-    inactivePromoters,
-    allInactivePromoters,
-  ]);
 
   const handleExportExcel = async () => {
     try {
       setExporting(true);
       const XLSX = await import("xlsx");
 
-      // ✅ Exclude customers and CustomersCount
-      const rows = allForExport.map((p) => ({
+      const rows = promoters.map((p) => ({
         PromoterMongoId: p._id,
         PromoterID: p.userid,
         Username: p.username,
         Email: p.email,
         Phone: p.mobNo,
-        Status: p.status,
-        Active: p.isActive ? "Yes" : "No",
+        GlobalLogin: p.isActive ? "Yes" : "Blocked",
+        ActiveInSeason: p.isActiveInSeason ? "Yes" : "No",
         Balance: p.balance,
+        SelfCustomers: p.selfMadeCustomerCount,
+        SubPromoters: p.directSubPromoterCount,
+        RecruitedBy: p.recruitedBy?.type === "promoter" && p.recruitedBy.promoter
+          ? p.recruitedBy.promoter.username
+          : "Admin"
       }));
 
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -157,7 +109,7 @@ export default function PromotersPage() {
             Winnerspin Promoters
           </h1>
           <p className="text-muted-foreground">
-            Manage promoters in your systems
+            Manage promoters in your network
           </p>
         </div>
 
@@ -165,9 +117,9 @@ export default function PromotersPage() {
           <Button
             variant="outline"
             onClick={handleExportExcel}
-            disabled={exporting || allForExport.length === 0}
+            disabled={exporting || promoters.length === 0}
             title={
-              allForExport.length === 0
+              promoters.length === 0
                 ? "No data to export"
                 : "Download all promoters as Excel"
             }
@@ -182,22 +134,45 @@ export default function PromotersPage() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      {counts && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Total Promoters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{counts.total}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Active This Season</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{counts.activeInSeason}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Not Active</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{counts.inactiveInSeason}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="space-y-10">
         {error ? (
           <div className="text-red-500">{error}</div>
         ) : (
           <PromoterTable
-            approvedPromoters={approvedPromoters}
-            nonApprovedPromoters={nonApprovedPromoters}
-            inactivePromoters={inactivePromoters}
-            allInactivePromoters={allInactivePromoters}
+            promoters={promoters}
             loading={loading}
-            onDelete={(id) => {
-              const fn = (arr: Promoter[]) => arr.filter((p) => p._id !== id);
-              setApprovedPromoters((prev) => fn(prev));
-              setNonApprovedPromoters((prev) => fn(prev));
-              setInactivePromoters((prev) => fn(prev));
-              setAllInactivePromoters((prev) => fn(prev));
+            onUpdate={() => {
+              fetchPromoters();
             }}
           />
         )}

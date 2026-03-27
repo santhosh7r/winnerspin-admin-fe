@@ -43,7 +43,6 @@ export default function EditPromoterPage() {
         username: String(raw?.username ?? ""),
         email: String(raw?.email ?? ""),
         mobNo: String(raw?.mobNo ?? ""),
-        status: raw?.status === "approved" ? "approved" : "unapproved",
         isActive: Boolean(raw?.isActive ?? true),
         address: String(raw?.address ?? ""),
         city: String(raw?.city ?? ""),
