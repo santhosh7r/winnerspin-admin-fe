@@ -26,8 +26,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, Search, Trash2 } from "lucide-react";
+import { MoreHorizontal, Eye, Search, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Customer } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 // ----------------------
 // TYPES
@@ -63,7 +64,10 @@ export function CustomerTable({
   const [statusFilter, setStatusFilter] = useState("all");
   const [promoterFilter, setPromoterFilter] = useState("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
-
+  
+  // ✅ Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 40;
 
   // Filter logic
   const filteredCustomers = customers.filter((customer) => {
@@ -80,6 +84,12 @@ export function CustomerTable({
 
     return matchesSearch && matchesStatus && matchesPromoter;
   });
+
+  // ✅ Pagination Calculations
+  const totalItems = filteredCustomers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -123,12 +133,15 @@ export function CustomerTable({
           <Input
             placeholder="Search by name, email, or card number..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1); // reset to first page on search
+            }}
             className="pl-10"
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -140,7 +153,7 @@ export function CustomerTable({
           </SelectContent>
         </Select>
 
-        <Select value={promoterFilter} onValueChange={setPromoterFilter}>
+        <Select value={promoterFilter} onValueChange={(v) => { setPromoterFilter(v); setCurrentPage(1); }}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Promoter" />
           </SelectTrigger>
@@ -156,73 +169,76 @@ export function CustomerTable({
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg">
+      <div className="border rounded-xl bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Card Number</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Promoter</TableHead>
-              <TableHead>Season</TableHead>
-              <TableHead>Created</TableHead>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-bold py-4 uppercase text-[10px] tracking-widest px-6">Username</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Email</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Mobile</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Card Number</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Status</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Promoter</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Season</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest">Created</TableHead>
               {showActions && (
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right pr-6 uppercase text-[10px] tracking-widest">Actions</TableHead>
               )}
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {filteredCustomers.length === 0 ? (
+            {paginatedCustomers.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={showActions ? 8 : 7}
-                  className="text-center py-8 text-muted-foreground"
+                  colSpan={9}
+                  className="text-center py-12 text-muted-foreground font-semibold"
                 >
                   No customers found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCustomers.map((customer) => (
-                <TableRow key={customer._id}>
-                  <TableCell className="font-medium">
+              paginatedCustomers.map((customer) => (
+                <TableRow key={customer._id} className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-bold py-4 px-6 truncate max-w-[150px]">
                     {customer.username}
                   </TableCell>
-                  <TableCell>{customer.email}</TableCell>
-                  <TableCell>{customer.cardNo || "N/A"}</TableCell>
+                  <TableCell className="text-muted-foreground">{customer.email}</TableCell>
+                  <TableCell className="text-muted-foreground">{customer.mobile || customer.phone || "N/A"}</TableCell>
+                  <TableCell className="font-mono text-xs">{customer.cardNo || "N/A"}</TableCell>
                   <TableCell>
                     <Badge
                       variant="secondary"
-                      className={getStatusColor(customer.status)}
+                      className={cn("px-3 border-none font-bold", getStatusColor(customer.status))}
                     >
                       {customer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-muted-foreground font-medium">
                     {customer.promoter?.username || "Unassigned"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-muted-foreground">
                     {customer.seasons && customer.seasons.length > 0
                       ? customer.seasons.map((s) => s.season).join(", ")
                       : "N/A"}
                   </TableCell>
-                  <TableCell>
+
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
                     {new Date(customer.createdAt).toLocaleDateString()}
                   </TableCell>
 
                   {showActions && (
-                    <TableCell className="text-right">
+                    <TableCell className="text-right pr-6">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-muted rounded-full">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/admin/customers/${customer._id}`}>
+                            <Link href={`/admin/customers/${customer._id}`} className="cursor-pointer">
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </Link>
@@ -231,6 +247,7 @@ export function CustomerTable({
                           {customer.status === "pending" && handleApprove && (
                             <DropdownMenuItem
                               disabled={approvingId === customer._id}
+                              className="cursor-pointer"
                               onClick={async () => {
                                 if (!handleApprove || approvingId) return;
                                 setApprovingId(customer._id);
@@ -260,7 +277,7 @@ export function CustomerTable({
 
                           {onDelete && (
                             <DropdownMenuItem
-                              className="text-destructive"
+                              className="text-destructive focus:text-destructive cursor-pointer"
                               onClick={() => onDelete(customer)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -270,7 +287,7 @@ export function CustomerTable({
 
                           {customer.status === "pending" && onReject && (
                             <DropdownMenuItem
-                              className="text-destructive"
+                              className="text-destructive focus:text-destructive cursor-pointer"
                               onClick={() => onReject(customer)}
                             >
                               <Eye className="mr-2 h-4 w-4" />
@@ -288,18 +305,35 @@ export function CustomerTable({
         </Table>
       </div>
 
-      {/* Pagination placeholder */}
-      {filteredCustomers.length > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredCustomers.length} customers
+      {/* ✅ Pagination Footer */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between py-2 px-1">
+          <p className="text-sm font-semibold text-muted-foreground/60 uppercase tracking-widest">
+            Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems}
           </p>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" disabled>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-9 px-4 rounded-lg font-bold"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
               Previous
             </Button>
-            <Button variant="outline" size="sm" disabled>
+            <div className="flex items-center gap-2 mx-2">
+               <span className="text-sm font-bold">{currentPage} / {totalPages}</span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-9 px-4 rounded-lg font-bold"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            >
               Next
+              <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           </div>
         </div>

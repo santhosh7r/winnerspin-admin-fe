@@ -28,11 +28,11 @@ export interface PromoterFormData {
   username: string;
   email: string;
   mobNo: string;
-  isActive: boolean;
   address: string;
   city: string;
   state: string;
   pincode: string;
+  status?: "approved" | "unapproved";
 }
 
 interface PromoterFormProps {
@@ -55,11 +55,11 @@ export function PromoterForm({
     username: initialData.username || "",
     email: initialData.email || "",
     mobNo: initialData.mobNo || "",
-    isActive: initialData.isActive ?? true,
     address: initialData.address || "",
     city: initialData.city || "",
     state: initialData.state || "",
     pincode: initialData.pincode || "",
+    status: initialData.status || "unapproved",
   });
 
   // Auto-fill city & state from pincode
@@ -230,27 +230,27 @@ export function PromoterForm({
           </div>
 
           {/* Status + Active */}
-          <div className="grid md:grid-cols-2 gap-4">
-
-
-            <div className="space-y-2">
-              <Label>Activate / Deactivate *</Label>
-              <Select
-                value={formData.isActive ? "active" : "inactive"}
-                onValueChange={(value) =>
-                  handleChange("isActive", value === "active")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+          {isEditing && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status for this Season *</Label>
+                <Select
+                  value={formData.status || "unapproved"}
+                  onValueChange={(value: "approved" | "unapproved") =>
+                    handleChange("status", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="unapproved">Unapproved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
 
           {formError && (
             <Alert variant="destructive">

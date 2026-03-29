@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Loader from "@/components/loader";
 import { dashboardAPI } from "@/lib/api";
+import { useEffect, useState } from "react";
 
 import {
-  DashboardApiResponse,
-  StatsResponse,
-  DashboardRecent,
+    DashboardRecent,
+    StatsResponse
 } from "@/lib/types";
 
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
-import { LatestTransactions } from "@/components/dashboard/LatestTransactions";
-import { LatestCustomers } from "@/components/dashboard/LatestCustomers";
-import { LatestWithdrawals } from "@/components/dashboard/LatestWithdrawals";
 import { QuickActions } from "@/components/quick-actions";
 
 export function DashboardContent({ seasonId }: { seasonId: string }) {
@@ -30,16 +26,14 @@ export function DashboardContent({ seasonId }: { seasonId: string }) {
       setError(null);
 
       try {
-        const res: DashboardApiResponse = await dashboardAPI.getDashboard(
-          seasonId
-        );
+        const data = await dashboardAPI.getStats(seasonId);
 
-        if (!res.success) {
+        if (!data || !data.stats) {
           throw new Error("Dashboard API returned unsuccessful response");
         }
 
-        setStats(res.stats);
-        setRecent(res.recent);
+        setStats(data.stats as StatsResponse);
+        setRecent({} as any); // Removed recent data fetch since it was removed from UI
       } catch (err) {
         console.error("Dashboard fetch error:", err);
         setError(
@@ -72,11 +66,12 @@ export function DashboardContent({ seasonId }: { seasonId: string }) {
   return (
     <div className="space-y-6">
       <StatsOverview stats={stats} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LatestTransactions data={recent.transactions} />
-        <LatestCustomers data={recent.customers} />
-        <LatestWithdrawals data={recent.withdrawals} />
+      
+      {/* 
+         REMOVAL OF LATEST SECTIONS (CUSTOMERS, TRANSACTIONS, WITHDRAWALS) 
+         AS REQUESTED BY USER 
+      */}
+      <div className="grid grid-cols-1 gap-6">
         <QuickActions />
       </div>
     </div>

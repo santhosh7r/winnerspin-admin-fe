@@ -44,15 +44,16 @@ function getSeasonId(): string | null {
 // DASHBOARD API
 // ===========================
 export const dashboardAPI = {
-  getStats: () => apiRequest("/stats"),
+  getStats: (seasonId: string) =>
+    apiRequest(`/dashboard-stats?seasonId=${encodeURIComponent(seasonId)}`),
+  getRecentTransactions: (seasonId: string) =>
+    apiRequest(`/transactions?seasonId=${encodeURIComponent(seasonId)}`),
   getAllPromoters: () => apiRequest("/all-promoters"),
   getNewCustomers: () => apiRequest("/new-customers"),
   getAllWithdrawals: () => apiRequest("/all-withdrawal"),
-  getTransactions: () => apiRequest("/transactions"),
   getSeasonEarnings: () => apiRequest("/season-earnings"),
-
-  getDashboard: (seasonId: string) =>
-    apiRequest(`/dashboard?seasonId=${encodeURIComponent(seasonId)}`),
+  // getDashboard: (seasonId: string) =>
+  //  apiRequest(`/dashboard?seasonId=${encodeURIComponent(seasonId)}`),
 };
 
 // ===========================
@@ -68,16 +69,26 @@ export const promoterAPI = {
       body: JSON.stringify(data),
     }),
 
-  toggleStatus: (promoterId: string, isActive: boolean) =>
-    apiRequest("/toggle-promoter", {
-      method: "POST",
-      body: JSON.stringify({ promoterId, isActive }),
-    }),
-
   activateForSeason: (promoterId: string, seasonId: string, activate: boolean) =>
     apiRequest("/activate-promoter-for-season", {
       method: "POST",
       body: JSON.stringify({ promoterId, seasonId, activate }),
+    }),
+
+  updateProfile: (
+    id: string,
+    data: Partial<{
+      userid: string;
+      username: string;
+      email: string;
+      mobNo: string;
+      status?: "approved" | "unapproved";
+      selectedSeason?: string;
+    }>
+  ) =>
+    apiRequest("/update-promoter-profile", {
+      method: "POST",
+      body: JSON.stringify({ promoterId: id, ...data }),
     }),
 
   getById: (id: string, params?: { seasonId?: string }) => {
@@ -90,22 +101,10 @@ export const promoterAPI = {
     return apiRequest(`/promoter-network/${promoterId}${query}`);
   },
 
-  updateProfile: (
-    id: string,
-    data: Partial<{
-      userid: string;
-      username: string;
-      email: string;
-      mobNo: string;
-      status?: "approved" | "unapproved";
-      isActive?: boolean;
-      selectedSeason?: string;
-    }>
-  ) =>
-    apiRequest("/update-promoter-profile", {
-      method: "POST",
-      body: JSON.stringify({ promoterId: id, ...data }),
-    }),
+  getNetworkTree: (seasonId?: string) => {
+    const query = seasonId ? `?seasonId=${seasonId}` : "";
+    return apiRequest(`/network-tree${query}`);
+  },
 };
 
 // ===========================
@@ -113,6 +112,11 @@ export const promoterAPI = {
 // ===========================
 export const seasonAPI = {
   getAll: () => apiRequest("/all-seasons"),
+
+  getPromotersForNewSeason: (referenceSeasonId?: string) => {
+    const query = referenceSeasonId ? `?referenceSeasonId=${referenceSeasonId}` : "";
+    return apiRequest(`/promoters-for-new-season${query}`);
+  },
 
   create: (data: object) =>
     apiRequest("/create-season", {
@@ -141,17 +145,23 @@ export const seasonAPI = {
 // CUSTOMER API (FIXED)
 // ===========================
 export const customerAPI = {
-  getAll: () => {
-    const seasonId = getSeasonId();
+  getStats: (seasonId: string) =>
+    apiRequest(`/customer-stats?seasonId=${encodeURIComponent(seasonId)}`),
+    
+  getRequestStats: (seasonId: string) =>
+    apiRequest(`/requests-stats?seasonId=${encodeURIComponent(seasonId)}`),
+
+  getAll: (seasonId?: string) => {
+    const sId = seasonId || getSeasonId();
     return apiRequest(
-      `/all-customers${seasonId ? `?seasonId=${seasonId}` : ""}`
+      `/all-customers${sId ? `?seasonId=${sId}` : ""}`
     );
   },
 
-  getNew: () => {
-    const seasonId = getSeasonId();
+  getNew: (seasonId?: string) => {
+    const sId = seasonId || getSeasonId();
     return apiRequest(
-      `/new-customers${seasonId ? `?seasonId=${seasonId}` : ""}`
+      `/new-customers${sId ? `?seasonId=${sId}` : ""}`
     );
   },
 

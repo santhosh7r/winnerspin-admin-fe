@@ -1,32 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Promoter } from "@/app/admin/promoters/page";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { promoterAPI } from "@/lib/api";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Search, Eye, Power, AlertCircle, PlayCircle, StopCircle, UserMinus } from "lucide-react";
-import { promoterAPI } from "@/lib/api";
-import { Promoter } from "@/app/admin/promoters/page";
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { AlertCircle, Eye, Search } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
 interface PromoterTableProps {
   promoters: Promoter[];
   loading?: boolean;
-  onUpdate: () => void;
+  onUpdate?: () => void;
 }
 
 export function PromoterTable({
@@ -35,6 +35,27 @@ export function PromoterTable({
   onUpdate,
 }: PromoterTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const handleToggleSeason = async (promoterId: string, currentStatus: boolean) => {
+    try {
+      const selectedSeason = localStorage.getItem("selectedSeason");
+      if (!selectedSeason) {
+        alert("Please select a season first");
+        return;
+      }
+      setToggling(promoterId);
+      await promoterAPI.updateProfile(promoterId, {
+        selectedSeason,
+        status: currentStatus ? "unapproved" : "approved"
+      });
+      if (onUpdate) onUpdate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setToggling(null);
+    }
+  };
 
   const filteredPromoters = promoters.filter((p) => {
     const s = searchTerm.toLowerCase();
@@ -44,32 +65,6 @@ export function PromoterTable({
       (p.userid ?? "").toLowerCase().includes(s)
     );
   });
-
-  const handleToggleGlobalLogin = async (promoter: Promoter) => {
-    const confirmMessage = promoter.isActive
-      ? "⚠ Deactivating this promoter will block their login access globally. Their network remains intact."
-      : "Activate this promoter to allow them to login globally?";
-
-    if (confirm(confirmMessage)) {
-      try {
-        await promoterAPI.toggleStatus(promoter._id, !promoter.isActive);
-        onUpdate();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : "Failed to toggle global login");
-      }
-    }
-  };
-
-  const handleToggleSeason = async (promoter: Promoter, activate: boolean) => {
-    try {
-      const selectedSeason = localStorage.getItem("selectedSeason");
-      if (!selectedSeason) return alert("Select a season first!");
-      await promoterAPI.activateForSeason(promoter._id, selectedSeason, activate);
-      onUpdate();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to toggle season status");
-    }
-  };
 
   if (loading) {
     return (
@@ -100,12 +95,12 @@ export function PromoterTable({
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Recruited By</TableHead>
+              <TableHead>Mobile</TableHead>
               <TableHead>Season Active</TableHead>
-              <TableHead>Self Customers</TableHead>
+              <TableHead>Recruited By</TableHead>
               <TableHead>Sub-Promoters</TableHead>
+              <TableHead>Customers</TableHead>
               <TableHead>Balance</TableHead>
-              <TableHead>Login</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -126,20 +121,17 @@ export function PromoterTable({
                     {promoter.userid}
                   </TableCell>
                   <TableCell>{promoter.username}</TableCell>
+                  <TableCell>{promoter.mobNo}</TableCell>
+                  <TableCell>
+                    <Badge variant={promoter.isActiveInSeason ? "default" : "secondary"} className={promoter.isActiveInSeason ? "bg-emerald-500 hover:bg-emerald-600" : ""}>
+                      {promoter.isActiveInSeason ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {promoter.recruitedBy?.type === "promoter" && promoter.recruitedBy.promoter
                       ? promoter.recruitedBy.promoter.username
                       : "Admin"}
                   </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={promoter.isActiveInSeason ? "default" : "secondary"}
-                      className={promoter.isActiveInSeason ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}
-                    >
-                      {promoter.isActiveInSeason ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{promoter.selfMadeCustomerCount || 0}</TableCell>
                   <TableCell>
                     <Link
                       href={`/admin/promoters/${promoter._id}/network`}
@@ -148,13 +140,9 @@ export function PromoterTable({
                       {promoter.directSubPromoterCount || 0}
                     </Link>
                   </TableCell>
+                  <TableCell>{promoter.selfMadeCustomerCount || 0}</TableCell>
                   <TableCell>
                     ₹{promoter.balance?.toLocaleString() || 0}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={promoter.isActive ? "outline" : "destructive"}>
-                      {promoter.isActive ? "Can Login" : "Blocked"}
-                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -170,34 +158,12 @@ export function PromoterTable({
                             View Profile
                           </Link>
                         </DropdownMenuItem>
-
-                        {promoter.isActiveInSeason ? (
-                          <DropdownMenuItem onClick={() => handleToggleSeason(promoter, false)}>
-                            <StopCircle className="mr-2 h-4 w-4 text-orange-500" />
-                            Deactivate for Season
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => handleToggleSeason(promoter, true)}>
-                            <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
-                            Activate for Season
-                          </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuItem
-                          className={promoter.isActive ? "text-red-500" : "text-green-500"}
-                          onClick={() => handleToggleGlobalLogin(promoter)}
-                        >
-                          {promoter.isActive ? (
-                            <>
-                              <UserMinus className="mr-2 h-4 w-4" /> Block Login
-                            </>
-                          ) : (
-                            <>
-                              <Power className="mr-2 h-4 w-4" /> Unblock Login
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
+                        <DropdownMenuItem disabled={toggling === promoter._id} onSelect={(e) => {
+                          e.preventDefault();
+                          handleToggleSeason(promoter._id, promoter.isActiveInSeason);
+                        }}>
+                          {promoter.isActiveInSeason ? "Make Inactive" : "Make Active"}
+                        </DropdownMenuItem>                      </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>

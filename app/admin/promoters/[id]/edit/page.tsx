@@ -43,11 +43,11 @@ export default function EditPromoterPage() {
         username: String(raw?.username ?? ""),
         email: String(raw?.email ?? ""),
         mobNo: String(raw?.mobNo ?? ""),
-        isActive: Boolean(raw?.isActive ?? true),
         address: String(raw?.address ?? ""),
         city: String(raw?.city ?? ""),
         state: String(raw?.state ?? ""),
         pincode: String(raw?.pincode ?? ""),
+        status: (raw as any)?.status === "approved" || (raw as any)?.status === "unapproved" ? (raw as any).status : "unapproved",
       };
 
       setPromoter(formatted);

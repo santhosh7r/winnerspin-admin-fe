@@ -8,19 +8,14 @@ import {
    ArrowLeft,
    CreditCard,
    Edit,
-   IndianRupeeIcon,
    Landmark,
    Mail,
    MapPin,
    Phone,
-   Users,
    Network,
    UserPlus,
-   PlayCircle,
-   StopCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
    Card,
    CardContent,
@@ -70,20 +65,6 @@ export default function PromoterDetailPage() {
       }
    }, [promoterId]);
 
-   const handleToggleSeason = async (activate: boolean) => {
-      try {
-         setLoading(true);
-         const selectedSeason = localStorage.getItem("selectedSeason");
-         if (!selectedSeason) return alert("Select a season first!");
-         await promoterAPI.activateForSeason(promoterId, selectedSeason, activate);
-         await fetchPromoter();
-      } catch (error) {
-         alert(error instanceof Error ? error.message : "Failed to toggle season status");
-      } finally {
-         setLoading(false);
-      }
-   };
-
    if (loading && !promoter) {
       return <Loader show={true} />;
    }
@@ -105,7 +86,6 @@ export default function PromoterDetailPage() {
    // Find current season info
    const selectedSeason = localStorage.getItem("selectedSeason");
    const actSeason = promoter.seasons?.find((s: any) => s.seasonId === selectedSeason);
-   const isActiveInSeason = actSeason?.isActiveInSeason || false;
 
    return (
       <div className="space-y-6 mt-15 lg:mt-0 relative">
@@ -121,9 +101,6 @@ export default function PromoterDetailPage() {
                <div>
                   <div className="flex items-center gap-3">
                      <h1 className="text-3xl font-bold">{promoter.username}</h1>
-                     <Badge variant={promoter.isActive ? "default" : "destructive"}>
-                        {promoter.isActive ? "Can Login" : "Blocked"}
-                     </Badge>
                   </div>
                   <p className="text-muted-foreground mt-1">
                      Promoter ID: {promoter.userid || "-"}
@@ -140,35 +117,10 @@ export default function PromoterDetailPage() {
                <Button asChild>
                   <Link href={`/admin/promoters/${promoter._id}/edit`}>
                      <Edit className="mr-2 h-4 w-4" />
-                     Edit Promoter
+                     Edit Profile
                   </Link>
                </Button>
             </div>
-         </div>
-
-         {/* Season Status Banner */}
-         <div className={`flex flex-col sm:flex-row items-center justify-between p-4 border rounded-lg ${isActiveInSeason ? "bg-green-50 border-green-200" : "bg-orange-50 border-orange-200"}`}>
-            <div>
-               <h3 className={`text-lg font-bold ${isActiveInSeason ? "text-green-800" : "text-orange-800"}`}>
-                  {isActiveInSeason ? "Active in Season" : "Not Active in Season"}
-               </h3>
-               <p className="text-sm text-gray-600">
-                  {isActiveInSeason
-                     ? "This promoter is currently enrolled in the selected season."
-                     : "This promoter is not active for the currently selected season."}
-               </p>
-            </div>
-            <Button
-               variant={isActiveInSeason ? "destructive" : "default"}
-               className="mt-4 sm:mt-0"
-               onClick={() => handleToggleSeason(!isActiveInSeason)}
-            >
-               {isActiveInSeason ? (
-                  <><StopCircle className="mr-2 h-4 w-4" /> Deactivate for Season</>
-               ) : (
-                  <><PlayCircle className="mr-2 h-4 w-4" /> Activate for Season</>
-               )}
-            </Button>
          </div>
 
          {/* 5 Count Cards */}
@@ -257,11 +209,16 @@ export default function PromoterDetailPage() {
                         <UserPlus className="h-4 w-4 text-muted-foreground" />
                         <div>
                            <p className="text-sm text-muted-foreground">Recruited By</p>
-                           <p className="font-medium text-blue-700">
-                              {promoter.recruitedBy?.type === "promoter" && promoter.recruitedBy.promoter
-                                 ? promoter.recruitedBy.promoter.username
-                                 : "Admin"}
-                           </p>
+                           {promoter.recruitedBy?.type === "promoter" && promoter.recruitedBy.promoter ? (
+                              <Link 
+                                 href={`/admin/promoters/${promoter.recruitedBy.promoter._id}`}
+                                 className="font-medium text-blue-700 hover:underline"
+                              >
+                                 {promoter.recruitedBy.promoter.username}
+                              </Link>
+                           ) : (
+                              <p className="font-medium text-blue-700">Admin</p>
+                           )}
                         </div>
                      </div>
                   </div>
@@ -375,9 +332,7 @@ export default function PromoterDetailPage() {
                            <TableHeader>
                               <TableRow>
                                  <TableHead>Season Name</TableHead>
-                                 <TableHead>Status</TableHead>
                                  <TableHead>Self Enrolled</TableHead>
-                                 <TableHead>Status Changed</TableHead>
                                  <TableHead className="text-right">Balance</TableHead>
                               </TableRow>
                            </TableHeader>
@@ -385,18 +340,7 @@ export default function PromoterDetailPage() {
                               {promoter.seasons.map((s: any) => (
                                  <TableRow key={s.seasonId}>
                                     <TableCell className="font-medium">{s.seasonName}</TableCell>
-                                    <TableCell>
-                                       <Badge variant={s.isActiveInSeason ? "default" : "secondary"}>
-                                          {s.isActiveInSeason ? "Active" : "Inactive"}
-                                       </Badge>
-                                    </TableCell>
                                     <TableCell>{s.selfMadeCustomerCount || s.selfMadeCustomers?.length || 0}</TableCell>
-                                    <TableCell>
-                                       {s.statusChangedAt
-                                          ? new Date(s.statusChangedAt).toLocaleDateString()
-                                          : "N/A"
-                                       }
-                                    </TableCell>
                                     <TableCell className="text-right font-medium">₹{s.balance?.toLocaleString() || 0}</TableCell>
                                  </TableRow>
                               ))}
