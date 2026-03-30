@@ -246,15 +246,29 @@ export default function TransactionsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Tabs defaultValue="all" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="all">All ({transactions.length})</TabsTrigger>
-              <TabsTrigger value="admin">
+            <TabsList className="bg-zinc-100 dark:bg-[#111] p-1 h-11 rounded-xl">
+              <TabsTrigger
+                value="all"
+                className="rounded-lg px-6 h-9 text-sm font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-black dark:data-[state=active]:text-white transition-all text-zinc-500"
+              >
+                All ({transactions.length})
+              </TabsTrigger>
+              <TabsTrigger
+                value="admin"
+                className="rounded-lg px-6 h-9 text-sm font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-black dark:data-[state=active]:text-white transition-all text-zinc-500"
+              >
                 Admin Credits ({creditedToAdminCount})
               </TabsTrigger>
-              <TabsTrigger value="promoter">
+              <TabsTrigger
+                value="promoter"
+                className="rounded-lg px-6 h-9 text-sm font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-black dark:data-[state=active]:text-white transition-all text-zinc-500"
+              >
                 Promoter Credits ({creditedToPromoterCount})
               </TabsTrigger>
-              <TabsTrigger value="debits">
+              <TabsTrigger
+                value="debits"
+                className="rounded-lg px-6 h-9 text-sm font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-black dark:data-[state=active]:text-white transition-all text-zinc-500"
+              >
                 Debits ({debitTransactions.length})
               </TabsTrigger>
             </TabsList>

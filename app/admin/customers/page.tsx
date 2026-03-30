@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -7,15 +5,16 @@ import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { CustomerTable } from "@/components/customer-table";
-import { Users, Download } from "lucide-react";
+import { Users, Download, UserPlus, FileSearch, UserX } from "lucide-react";
 import { customerAPI } from "@/lib/api";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 
 import {
   AlertDialog,
@@ -31,6 +30,27 @@ import {
 // ✅ use unified type from lib/types.ts
 import type { Customer } from "@/lib/types";
 
+function StatCard({ label, value, icon: Icon, colorClass }: {
+  label: string;
+  value: number|string;
+  icon: React.ElementType;
+  colorClass: string;
+}) {
+  return (
+    <div className="bg-card dark:bg-[#0a0a0a] border border-border dark:border-[#1a1a1a] rounded-xl p-5 flex items-center gap-4 hover:shadow-sm transition-all group active:scale-95">
+      <div className={cn("h-11 w-11 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", colorClass)}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-[10px] font-bold text-muted-foreground dark:text-zinc-500 uppercase tracking-widest leading-none mb-1.5">{label}</p>
+        <p className="text-2xl font-black text-foreground dark:text-white tracking-tight">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,21 +62,46 @@ export default function CustomersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
+
   useEffect(() => {
     loadCustomers();
   }, []);
 
   const loadCustomers = async () => {
+    const seasonId = typeof window !== "undefined" ? localStorage.getItem("selectedSeason") : null;
+    if (!seasonId) {
+      setError("No season selected");
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
-      const response = await customerAPI.getAll();
-setCustomers(
-  (response.customers || []).map((c: Customer) => ({
-    ...c,
-    status: c.status ?? (c.isApproved ? "approved" : "pending"),
-  }))
-);
+      
+      const statsResponse = await customerAPI.getStats(seasonId);
+      if (statsResponse?.stats) {
+        setStats({
+          total: statsResponse.stats.totalCustomers || 0,
+          pending: statsResponse.stats.pendingRequests || 0,
+          approved: statsResponse.stats.approvedToday || 0,
+          rejected: statsResponse.stats.totalRejected || 0,
+        });
+      }
+
+      const response = await customerAPI.getAll(seasonId);
+      setCustomers(
+        (response.customers || []).map((c: Customer) => ({
+          ...c,
+          status: c.status ?? (c.isApproved ? "approved" : "pending"),
+        }))
+      );
     } catch (err) {
       console.error("Error fetching customers:", err);
       setError(
@@ -65,13 +110,6 @@ setCustomers(
     } finally {
       setLoading(false);
     }
-  };
-
-  const stats = {
-    total: customers.length,
-    approved: customers.filter((c) => c.status === "approved").length,
-    pending: customers.filter((c) => c.status === "pending").length,
-    rejected: customers.filter((c) => c.status === "rejected").length,
   };
 
   const goToRequests = () => {
@@ -156,54 +194,58 @@ setCustomers(
       <Loader show={loading} />
       {!loading && (
         <div className="space-y-6 mt-15 lg:mt-0">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                Winnerspin Customers
-              </h1>
-              <p className="text-muted-foreground">
-                Manage pending customers in your system
-              </p>
-            </div>
+          <PageHeader
+            title="Winnerspin Customers"
+            description="Manage all approved customers"
+            actions={
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportExcel}
+                  disabled={exporting || customers.length === 0}
+                  className="bg-transparent border-border hover:bg-muted font-bold"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {exporting ? "Exporting..." : "Export Excel"}
+                </Button>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={handleExportExcel}
-                disabled={exporting || customers.length === 0}
-                title={
-                  customers.length === 0
-                    ? "No data to export"
-                    : "Export customers to Excel"
-                }
-              >
-                <Download className="mr-2 h-4 w-4" />
-                {exporting ? "Exporting..." : "Export Excel"}
-              </Button>
+                <Button
+                  onClick={goToRequests}
+                  className="bg-black text-white hover:bg-black/90 font-bold uppercase text-[11px] tracking-widest h-10 px-6 rounded-lg dark:bg-white dark:text-black dark:hover:bg-white/90"
+                >
+                  <FileSearch className="mr-2 h-4 w-4" />
+                  Check Requests
+                </Button>
+              </div>
+            }
+          />
 
-              <button
-                onClick={goToRequests}
-                className="px-4 py-2 bg-black text-white rounded-md hover:bg-black/15 hover:text-black"
-              >
-                Check New Customer Requests
-              </button>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Customers
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
+          {/* Stats Section with Pending and Rejected cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard 
+              label="Total Customers" 
+              value={stats.total} 
+              icon={Users} 
+              colorClass="bg-blue-50/50 text-blue-600" 
+            />
+            <StatCard 
+              label="Pending Requests" 
+              value={stats.pending} 
+              icon={UserPlus} 
+              colorClass="bg-amber-50/50 text-amber-600" 
+            />
+            <StatCard 
+              label="Approved Today" 
+              value={stats.approved} 
+              icon={Users} 
+              colorClass="bg-emerald-50/50 text-emerald-600" 
+            />
+            <StatCard 
+              label="Total Rejected" 
+              value={stats.rejected} 
+              icon={UserX} 
+              colorClass="bg-red-50/50 text-red-600" 
+            />
           </div>
 
           {error && (
@@ -235,20 +277,12 @@ setCustomers(
           )}
 
           {!error && customers.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Approved Customers</CardTitle>
-                <CardDescription>View and manage all customers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CustomerTable
-                  customers={customers}
-                  loading={false}
-                  showActions={true}
-                  onDelete={handleDeleteRequest}
-                />
-              </CardContent>
-            </Card>
+            <CustomerTable
+              customers={customers}
+              loading={false}
+              showActions={true}
+              onDelete={handleDeleteRequest}
+            />
           )}
         </div>
       )}

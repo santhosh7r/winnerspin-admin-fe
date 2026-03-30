@@ -1,384 +1,358 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { promoterAPI } from "@/lib/api";
+import {
+   ArrowLeft,
+   CreditCard,
+   Edit,
+   Landmark,
+   Mail,
+   MapPin,
+   Phone,
+   Network,
+   UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+   Card,
+   CardContent,
+   CardDescription,
+   CardHeader,
+   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+   Table,
+   TableBody,
+   TableCell,
+   TableHead,
+   TableHeader,
+   TableRow,
 } from "@/components/ui/table";
-import { promoterAPI } from "@/lib/api";
-import {
-  ArrowLeft,
-  CreditCard,
-  Edit,
-  IndianRupeeIcon,
-  Landmark,
-  Mail,
-  MapPin,
-  Phone,
-  Users,
-} from "lucide-react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-interface Customer {
-  _id: string;
-  username: string;
-  email: string;
-  cardNo: string;
-}
-
-interface Season {
-  seasonId: string;
-  seasonName?: string;
-  statusChangedAt: string | null;
-  status: "approved" | "unapproved" | "inactive";
-  balance: number;
-  customers: Customer[];
-}
-
-interface Payment {
-  _id: string;
-  accNo?: string;
-  accHolderName?: string;
-  bankName?: string;
-  ifscCode?: string;
-  branch?: string;
-  branchAdress?: string;
-  upiId?: string;
-}
-
-interface Promoter {
-  _id: string;
-  userid?: string;
-  username: string;
-  email: string;
-  mobNo: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-  isActive?: boolean;
-  payment?: Payment | null;
-  seasons: Season[];
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Loader from "@/components/loader";
 
 export default function PromoterDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [promoter, setPromoter] = useState<Promoter | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+   const params = useParams();
+   const router = useRouter();
+   const promoterId = params.id as string;
 
-  const fetchPromoter = async (id: string) => {
-    try {
-      setLoading(true);
-      const selectedSeason = localStorage.getItem("selectedseason");
+   const [promoter, setPromoter] = useState<any>(null);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState<string | null>(null);
 
-      const response = await promoterAPI.getById(id, {
-        seasonId: selectedSeason || undefined,
-      });
+   const fetchPromoter = async () => {
+      try {
+         setLoading(true);
+         const selectedSeason = localStorage.getItem("selectedSeason");
+         const response = await promoterAPI.getById(promoterId, {
+            seasonId: selectedSeason || undefined,
+         });
+         setPromoter(response.promoter);
+      } catch (err) {
+         setError(err instanceof Error ? err.message : "Failed to fetch promoter");
+      } finally {
+         setLoading(false);
+      }
+   };
 
-      setPromoter(response.promoter);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch promoter");
-    } finally {
-      setLoading(false);
-    }
-  };
+   useEffect(() => {
+      if (promoterId) {
+         fetchPromoter();
+      }
+   }, [promoterId]);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchPromoter(params.id as string);
-    }
-  }, [params.id]);
+   if (loading && !promoter) {
+      return <Loader show={true} />;
+   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "unapproved":
-        return "bg-red-100 text-red-800";
-      case "inactive":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  if (loading) {
-    return <p className="p-4">Loading...</p>;
-  }
-
-  if (error || !promoter) {
-    return (
-      <div className="space-y-6 mt-15 lg:mt-0">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <p className="text-center text-red-500">
-          {error || "Promoter not found"}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{promoter.username}</h1>
-            <p className="text-muted-foreground">
-              Promoter ID: {promoter.userid || "-"}
+   if (error || !promoter) {
+      return (
+         <div className="space-y-6 mt-15 lg:mt-0">
+            <Button variant="ghost" onClick={() => router.back()}>
+               <ArrowLeft className="mr-2 h-4 w-4" />
+               Back
+            </Button>
+            <p className="text-center text-red-500">
+               {error || "Promoter not found"}
             </p>
-          </div>
-        </div>
-        <Button asChild>
-          <Link href={`/admin/promoters/${promoter._id}/edit`}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Promoter
-          </Link>
-        </Button>
-      </div>
+         </div>
+      );
+   }
 
-      {/* Highlighted Status Change Date */}
-      {promoter.seasons.length > 0 &&
-        (promoter.seasons[0].statusChangedAt ? (
-          <div className="text-center p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">Last Status Update</p>
-            <p className="text-xl font-bold text-red-800">
-              {new Date(promoter.seasons[0].statusChangedAt).toLocaleDateString(
-                "en-US",
-                { year: "numeric", month: "long", day: "numeric" }
-              )}
-            </p>
-          </div>
-        ) : (
-          <div className="text-center p-3 bg-red-100 border border-red-300 rounded-lg">
-            <p className="text-lg font-semibold text-red-700">
-              Status change date not available
-            </p>
-          </div>
-        ))}
+   // Find current season info
+   const selectedSeason = localStorage.getItem("selectedSeason");
+   const actSeason = promoter.seasons?.find((s: any) => s.seasonId === selectedSeason);
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Promoter Info */}
-        <div className="lg:col-span-2">
-          <Card>
+   return (
+      <div className="space-y-6 mt-15 lg:mt-0 relative">
+         <Loader show={loading} />
+
+         {/* Header */}
+         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+               <Button variant="ghost" onClick={() => router.back()}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+               </Button>
+               <div>
+                  <div className="flex items-center gap-3">
+                     <h1 className="text-3xl font-bold">{promoter.username}</h1>
+                  </div>
+                  <p className="text-muted-foreground mt-1">
+                     Promoter ID: {promoter.userid || "-"}
+                  </p>
+               </div>
+            </div>
+            <div className="flex gap-2">
+               <Button asChild variant="outline">
+                  <Link href={`/admin/promoters/${promoter._id}/network`}>
+                     <Network className="mr-2 h-4 w-4" />
+                     View Network
+                  </Link>
+               </Button>
+               <Button asChild>
+                  <Link href={`/admin/promoters/${promoter._id}/edit`}>
+                     <Edit className="mr-2 h-4 w-4" />
+                     Edit Profile
+                  </Link>
+               </Button>
+            </div>
+         </div>
+
+         {/* 5 Count Cards */}
+         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card>
+               <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Self Promoters</CardTitle>
+               </CardHeader>
+               <CardContent>
+                  <div className="text-2xl font-bold">{promoter.networkCounts?.selfMadePromoters || 0}</div>
+               </CardContent>
+            </Card>
+            <Card>
+               <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Network Promoters</CardTitle>
+               </CardHeader>
+               <CardContent>
+                  <div className="text-2xl font-bold">{promoter.networkCounts?.totalNetworkPromoters || 0}</div>
+               </CardContent>
+            </Card>
+            <Card>
+               <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Self Customers</CardTitle>
+               </CardHeader>
+               <CardContent>
+                  <div className="text-2xl font-bold">{promoter.networkCounts?.selfMadeCustomers || 0}</div>
+               </CardContent>
+            </Card>
+            <Card>
+               <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Network Customers</CardTitle>
+               </CardHeader>
+               <CardContent>
+                  <div className="text-2xl font-bold">{promoter.networkCounts?.networkCustomers || 0}</div>
+               </CardContent>
+            </Card>
+            <Card className="bg-primary text-primary-foreground border-none">
+               <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium">Season Balance</CardTitle>
+               </CardHeader>
+               <CardContent>
+                  <div className="text-2xl font-bold">₹{actSeason?.balance?.toLocaleString() || 0}</div>
+               </CardContent>
+            </Card>
+         </div>
+
+         {/* Info Card */}
+         <Card>
             <CardHeader>
-              <CardTitle>Promoter Information</CardTitle>
-              <CardDescription>Basic details and contact info</CardDescription>
+               <CardTitle>Promoter Information</CardTitle>
+               <CardDescription>Basic details and contact info</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Contact Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{promoter.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mobile</p>
-                      <p className="font-medium">{promoter.mobNo}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Address</p>
-                      <p className="font-medium">
-                        {promoter.address}, {promoter.city}, {promoter.state} -{" "}
-                        {promoter.pincode}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Info */}
-              {promoter.payment && (
-                <>
-                  <Separator />
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-4">
-                    <p className="text-lg font-semibold">Payment Details</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center gap-3">
-                        <Landmark className="h-4 w-4 text-muted-foreground" />
+                     <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-sm text-muted-foreground">
-                            Bank Name
-                          </p>
-                          <p className="font-medium">
-                            {promoter.payment.bankName}
-                          </p>
+                           <p className="text-sm text-muted-foreground">Email</p>
+                           <p className="font-medium">{promoter.email}</p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-sm text-muted-foreground">
-                            Account No.
-                          </p>
-                          <p className="font-medium">
-                            {promoter.payment.accNo}
-                          </p>
+                           <p className="text-sm text-muted-foreground">Mobile</p>
+                           <p className="font-medium">{promoter.mobNo}</p>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">IFSC</p>
-                        <p className="font-medium">
-                          {promoter.payment.ifscCode}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">UPI ID</p>
-                        <p className="font-medium">{promoter.payment.upiId}</p>
-                      </div>
-                    </div>
+                     </div>
                   </div>
-                </>
-              )}
 
-              {/* Seasons */}
-              <Separator />
-              <div className="space-y-4">
-                <p className="text-lg font-semibold">Season Details</p>
-                {promoter.seasons.length > 0 ? (
-                  promoter.seasons.map((s) => (
-                    <div
-                      key={s.seasonId}
-                      className="p-3 border rounded space-y-2 bg-gray-50"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">
-                          {s.seasonName || "Season"}
-                        </span>
-                        <Badge
-                          variant="secondary"
-                          className={getStatusColor(s.status)}
-                        >
-                          {s.status}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {s.statusChangedAt
-                          ? `Status changed on: ${new Date(
-                              s.statusChangedAt
-                            ).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}`
-                          : "Status change date not available"}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <IndianRupeeIcon className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          Balance: ₹{s.balance.toLocaleString()}
-                        </span>
-                      </div>
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-3">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                           <p className="text-sm text-muted-foreground">Address</p>
+                           <p className="font-medium">
+                              {promoter.address}, {promoter.city}, {promoter.state} - {promoter.pincode}
+                           </p>
+                        </div>
+                     </div>
+                  </div>
 
-                      {/* Customers */}
-                      <div className="mt-2">
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Customers ({s.customers.length})
-                        </p>
-                        {s.customers.length > 0 ? (
-                          <Table>
-                            <TableHeader>
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-3">
+                        <UserPlus className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                           <p className="text-sm text-muted-foreground">Recruited By</p>
+                           {promoter.recruitedBy?.type === "promoter" && promoter.recruitedBy.promoter ? (
+                              <Link 
+                                 href={`/admin/promoters/${promoter.recruitedBy.promoter._id}`}
+                                 className="font-medium text-blue-700 hover:underline"
+                              >
+                                 {promoter.recruitedBy.promoter.username}
+                              </Link>
+                           ) : (
+                              <p className="font-medium text-blue-700">Admin</p>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Payment Info */}
+               {promoter.payment && (
+                  <>
+                     <Separator />
+                     <div className="space-y-4">
+                        <p className="text-lg font-semibold">Payment Details</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                           <div className="flex items-center gap-3">
+                              <Landmark className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                 <p className="text-sm text-muted-foreground">Bank Name</p>
+                                 <p className="font-medium">{promoter.payment.bankName}</p>
+                              </div>
+                           </div>
+                           <div className="flex items-center gap-3">
+                              <CreditCard className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                 <p className="text-sm text-muted-foreground">Account No.</p>
+                                 <p className="font-medium">{promoter.payment.accNo}</p>
+                              </div>
+                           </div>
+                           <div>
+                              <p className="text-sm text-muted-foreground">IFSC</p>
+                              <p className="font-medium">{promoter.payment.ifscCode}</p>
+                           </div>
+                           <div>
+                              <p className="text-sm text-muted-foreground">UPI ID</p>
+                              <p className="font-medium">{promoter.payment.upiId}</p>
+                           </div>
+                        </div>
+                     </div>
+                  </>
+               )}
+            </CardContent>
+         </Card>
+
+         {/* Tabs Section */}
+         <Tabs defaultValue="self-customers" className="w-full">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
+               <TabsTrigger value="self-customers" className="py-3">Self-Made Customers</TabsTrigger>
+               <TabsTrigger value="network" className="py-3">Network Highlights</TabsTrigger>
+               <TabsTrigger value="history" className="py-3">Season History</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="self-customers" className="pt-4 space-y-4">
+               <Card>
+                  <CardHeader>
+                     <CardTitle>Enrolled Customers</CardTitle>
+                     <CardDescription>Customers directly enrolled by this promoter in the selected season.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                     {actSeason?.selfMadeCustomers && actSeason.selfMadeCustomers.length > 0 ? (
+                        <Table>
+                           <TableHeader>
                               <TableRow>
-                                <TableHead className="w-[50px]">S.No</TableHead>
-                                <TableHead>Username</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Card No.</TableHead>
+                                 <TableHead>Card No.</TableHead>
+                                 <TableHead>Username</TableHead>
+                                 <TableHead>Email</TableHead>
+                                 <TableHead>Mobile</TableHead>
+                                 <TableHead>Status</TableHead>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {s.customers.map((c, index) => (
-                                <TableRow key={c._id}>
-                                  <TableCell>{index + 1}</TableCell>
-                                  <TableCell>{c.username}</TableCell>
-                                  <TableCell>{c.email}</TableCell>
-                                  <TableCell>{c.cardNo}</TableCell>
-                                </TableRow>
+                           </TableHeader>
+                           <TableBody>
+                              {actSeason.selfMadeCustomers.map((c: any) => (
+                                 <TableRow key={c._id}>
+                                    <TableCell className="font-medium">{c.cardNo || "-"}</TableCell>
+                                    <TableCell>{c.username}</TableCell>
+                                    <TableCell>{c.email}</TableCell>
+                                    <TableCell>{c.mobile || c.phone}</TableCell>
+                                    <TableCell>{c.status}</TableCell>
+                                 </TableRow>
                               ))}
-                            </TableBody>
-                          </Table>
-                        ) : (
-                          <p className="text-sm text-gray-500">No customers</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No seasons found</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                           </TableBody>
+                        </Table>
+                     ) : (
+                        <p className="text-center text-muted-foreground p-8">No customers enrolled in this season.</p>
+                     )}
+                  </CardContent>
+               </Card>
+            </TabsContent>
 
-        {/* Stats */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Total Seasons</span>
-                </div>
-                <span className="font-bold text-lg">
-                  {promoter.seasons.length}
-                </span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Total Customers
-                </span>
-                <span className="font-medium">
-                  {promoter.seasons.reduce(
-                    (sum, s) => sum + (s.customers?.length || 0),
-                    0
-                  )}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            <TabsContent value="network" className="pt-4 space-y-4">
+               <Card>
+                  <CardContent className="pt-6 text-center">
+                     <Network className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                     <h3 className="text-xl font-bold mb-2">Network View</h3>
+                     <p className="text-muted-foreground mb-4">View the expanded network structure of this promoter including sub-promoters and their customers.</p>
+                     <Button asChild>
+                        <Link href={`/admin/promoters/${promoter._id}/network`}>
+                           Open Full Network View
+                        </Link>
+                     </Button>
+                  </CardContent>
+               </Card>
+            </TabsContent>
+
+            <TabsContent value="history" className="pt-4 space-y-4">
+               <Card>
+                  <CardHeader>
+                     <CardTitle>Season History</CardTitle>
+                     <CardDescription>Performance across all seasons.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                     {promoter.seasons && promoter.seasons.length > 0 ? (
+                        <Table>
+                           <TableHeader>
+                              <TableRow>
+                                 <TableHead>Season Name</TableHead>
+                                 <TableHead>Self Enrolled</TableHead>
+                                 <TableHead className="text-right">Balance</TableHead>
+                              </TableRow>
+                           </TableHeader>
+                           <TableBody>
+                              {promoter.seasons.map((s: any) => (
+                                 <TableRow key={s.seasonId}>
+                                    <TableCell className="font-medium">{s.seasonName}</TableCell>
+                                    <TableCell>{s.selfMadeCustomerCount || s.selfMadeCustomers?.length || 0}</TableCell>
+                                    <TableCell className="text-right font-medium">₹{s.balance?.toLocaleString() || 0}</TableCell>
+                                 </TableRow>
+                              ))}
+                           </TableBody>
+                        </Table>
+                     ) : (
+                        <p className="text-center text-muted-foreground p-8">No season history available.</p>
+                     )}
+                  </CardContent>
+               </Card>
+            </TabsContent>
+         </Tabs>
       </div>
-    </div>
-  );
+   );
 }

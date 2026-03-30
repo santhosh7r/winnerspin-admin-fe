@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -12,14 +11,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,10 +27,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Check, X, Search } from "lucide-react";
+import { MoreHorizontal, Check, X, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Withdrawal } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-// -------- Extended Type --------
 export interface ExtendedWithdrawal extends Withdrawal {
   requester?: {
     _id?: string;
@@ -63,248 +54,186 @@ export function WithdrawalTable({
   onApprove,
   onReject,
 }: WithdrawalTableProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [actionWithdrawal, setActionWithdrawal] = useState<{
     withdrawal: ExtendedWithdrawal;
     action: "approve" | "reject";
   } | null>(null);
 
-  // -------- Filtering Logic --------
-  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
-    const username = withdrawal.requester?.username || "";
-    const userid = withdrawal.requester?.userid || "";
-    const amountNum = Number(withdrawal.amount);
+  // ✅ Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 40;
 
-    const matchesSearch =
-      username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      userid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      amountNum.toString().includes(searchTerm);
-
-    const matchesStatus =
-      statusFilter === "all" || withdrawal.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  // -------- Status Badge Colors --------
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  // -------- Correct Processed Date Logic --------
-  const getProcessedDate = (w: ExtendedWithdrawal) => {
-    if (w.status === "approved") {
-      return w.approvedAt
-        ? new Date(w.approvedAt).toLocaleDateString("en-IN", {
-            dateStyle: "medium",
-          })
-        : "Not approved";
-    }
-
-    // pending OR rejected
-    return "Not approved";
-  };
-
-  // -------- Dialog Action --------
   const handleAction = () => {
     if (!actionWithdrawal) return;
-
     if (actionWithdrawal.action === "approve") {
       onApprove(actionWithdrawal.withdrawal._id);
     } else {
       onReject(actionWithdrawal.withdrawal._id);
     }
-
     setActionWithdrawal(null);
   };
 
-  // -------- Loading Skeleton --------
-  if (loading) {
+  // ✅ Pagination calculations
+  const totalItems = withdrawals.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedWithdrawals = withdrawals.slice(startIndex, startIndex + itemsPerPage);
+
+  if (withdrawals.length === 0 && !loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex gap-4">
-          <div className="h-10 bg-muted animate-pulse rounded flex-1" />
-          <div className="h-10 bg-muted animate-pulse rounded w-32" />
-        </div>
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 bg-muted animate-pulse rounded" />
-        ))}
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/40 gap-4">
+        <Clock className="h-10 w-10 opacity-20" />
+        <p className="text-sm font-semibold tracking-wider uppercase">No withdrawals found</p>
       </div>
     );
   }
 
-  // -------- Table UI --------
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search by username, promoter ID, or amount..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+    <div className="w-full">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 dark:bg-[#0a0a0a]">
+            <TableHead className="font-bold py-4 px-6 uppercase text-[10px] tracking-widest">Promoter</TableHead>
+            <TableHead className="font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
+            <TableHead className="font-bold uppercase text-[10px] tracking-widest">Status</TableHead>
+            <TableHead className="font-bold uppercase text-[10px] tracking-widest">Request Date</TableHead>
+            <TableHead className="font-bold uppercase text-[10px] tracking-widest">Processed Date</TableHead>
+            <TableHead className="font-bold text-right pr-6 uppercase text-[10px] tracking-widest">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        <TableBody>
+          {paginatedWithdrawals.map((w) => (
+            <TableRow key={w._id} className="hover:bg-muted/30 transition-colors">
+              <TableCell className="py-4 px-6 font-semibold">
+                <div className="flex flex-col">
+                  <span>{w.requester?.username || "Unknown"}</span>
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mt-0.5">
+                    {w.requester?.userid || "N/A"}
+                  </span>
+                </div>
+              </TableCell>
 
-      {/* Table */}
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Promoter</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Request Date</TableHead>
-              <TableHead>Processed Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableCell className="font-bold text-base">
+                ₹{Number(w.amount).toLocaleString()}
+              </TableCell>
+
+              <TableCell>
+                {w.status === "approved" ? (
+                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold border-none px-3">
+                    Approved
+                  </Badge>
+                ) : w.status === "pending" ? (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 font-bold border-none px-3">
+                     Pending
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 font-bold border-none px-3">
+                     Rejected
+                  </Badge>
+                )}
+              </TableCell>
+
+              <TableCell className="text-muted-foreground">
+                {new Date(w.requestDate ?? w.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+              </TableCell>
+
+              <TableCell className="text-muted-foreground">
+                {w.status === "approved" && w.approvedAt ? 
+                  new Date(w.approvedAt).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—"}
+              </TableCell>
+
+              <TableCell className="text-right pr-6">
+                {w.status === "pending" ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-muted rounded-full transition-all">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="text-emerald-600 focus:text-emerald-600 font-bold cursor-pointer"
+                        onClick={() => setActionWithdrawal({ withdrawal: w, action: "approve" })}
+                      >
+                        <Check className="mr-2 h-4 w-4" /> Approve
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-rose-600 focus:text-rose-600 font-bold cursor-pointer"
+                        onClick={() => setActionWithdrawal({ withdrawal: w, action: "reject" })}
+                      >
+                        <X className="mr-2 h-4 w-4" /> Reject
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <span className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest capitalize">{w.status}</span>
+                )}
+              </TableCell>
             </TableRow>
-          </TableHeader>
+          ))}
+        </TableBody>
+      </Table>
 
-          <TableBody>
-            {filteredWithdrawals.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center py-8 text-muted-foreground"
-                >
-                  No withdrawals found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredWithdrawals.map((w) => (
-                <TableRow key={w._id}>
-                  <TableCell>
-                    <p className="font-medium">
-                      {w.requester?.username || "Unknown"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {w.requester?.userid || "N/A"}
-                    </p>
-                  </TableCell>
+      {/* ✅ Pagination Footer */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between py-6 px-6 border-t border-border">
+          <p className="text-sm font-semibold text-muted-foreground/60 uppercase tracking-widest transition-opacity duration-300">
+            Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-9 px-4 rounded-lg font-bold"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Previous
+            </Button>
+            <div className="flex items-center gap-2 mx-4">
+               <span className="text-sm font-black">{currentPage} / {totalPages}</span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-9 px-4 rounded-lg font-bold"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      )}
 
-                  <TableCell>₹{Number(w.amount).toLocaleString()}</TableCell>
-
-                  <TableCell>
-                    <Badge className={getStatusColor(w.status)}>
-                      {w.status}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell>
-                    {new Date(w.requestDate ?? w.createdAt).toLocaleDateString(
-                      "en-IN",
-                      { dateStyle: "medium" }
-                    )}
-                  </TableCell>
-
-                  <TableCell>{getProcessedDate(w)}</TableCell>
-
-                  <TableCell className="text-right">
-                    {w.status === "pending" ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-green-600"
-                            onClick={() =>
-                              setActionWithdrawal({
-                                withdrawal: w,
-                                action: "approve",
-                              })
-                            }
-                          >
-                            <Check className="mr-2 h-4 w-4" /> Approve
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() =>
-                              setActionWithdrawal({
-                                withdrawal: w,
-                                action: "reject",
-                              })
-                            }
-                          >
-                            <X className="mr-2 h-4 w-4" /> Reject
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <span className="text-sm text-muted-foreground capitalize">
-                        {w.status}
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Confirmation Dialog */}
       <AlertDialog
         open={!!actionWithdrawal}
         onOpenChange={() => setActionWithdrawal(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {actionWithdrawal?.action === "approve" ? "Approve" : "Reject"}{" "}
-              Withdrawal
+            <AlertDialogTitle className="text-xl font-bold tracking-tight">
+              {actionWithdrawal?.action === "approve" ? "Confirm Approval" : "Confirm Rejection"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to {actionWithdrawal?.action} this
-              withdrawal of ₹
-              {actionWithdrawal?.withdrawal.amount.toLocaleString()} from{" "}
-              {actionWithdrawal?.withdrawal.requester?.username ||
-                "this promoter"}
-              ?
+            <AlertDialogDescription className="text-[15px] font-medium text-muted-foreground mt-2">
+              Are you sure you want to {actionWithdrawal?.action} the withdrawal of <span className="text-foreground dark:text-white font-bold tracking-tighter">₹{Number(actionWithdrawal?.withdrawal.amount).toLocaleString()}</span> from {actionWithdrawal?.withdrawal.requester?.username}?
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="font-bold border rounded-lg h-10 px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleAction}
-              className={
+              className={cn(
+                "font-bold rounded-lg h-10 px-8 transition-opacity uppercase text-[11px] tracking-widest",
                 actionWithdrawal?.action === "approve"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              }
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20 shadow-lg"
+                  : "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/20 shadow-lg"
+              )}
             >
-              {actionWithdrawal?.action === "approve" ? "Approve" : "Reject"}
+              Confirm {actionWithdrawal?.action}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

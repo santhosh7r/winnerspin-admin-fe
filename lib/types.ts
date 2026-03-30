@@ -146,6 +146,8 @@ export interface Customer {
   username: string;
   email: string;
   mobNo?: string;
+  mobile?: string;
+  phone?: string;
   cardNo?: string;
 
   // ✅ Make this REQUIRED (not optional)

@@ -23,6 +23,7 @@
 // import { seasonAPI } from "@/lib/api";
 // import { Plus, Calendar, Play, Clock, CheckCircle } from "lucide-react";
 // import Loader from "@/components/loader"; // ✅ using your global loader
+// import { CreateSeasonDialog } from "./create-season-dialog";
 
 // interface SeasonItem {
 //   _id: string;
@@ -125,12 +126,7 @@
 //             Manage promotional seasons and promoter assignments
 //           </p>
 //         </div>
-//         <Button asChild>
-//           <Link href="/admin/seasons/create">
-//             <Plus className="mr-2 h-4 w-4" />
-//             Create Season
-//           </Link>
-//         </Button>
+//         <CreateSeasonDialog onSuccess={fetchSeasons} />
 //       </div>
 
 //       {/* Current Season */}
@@ -316,16 +312,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Loader from "@/components/loader";
+import { PageHeader } from "@/components/page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -336,9 +324,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { seasonAPI } from "@/lib/api";
-import { Plus, Calendar, Play, Clock, CheckCircle } from "lucide-react";
-import Loader from "@/components/loader";
+import { Calendar, CheckCircle, Clock, Play } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CreateSeasonDialog } from "./create-season-dialog";
 
 interface SeasonItem {
   _id: string;
@@ -347,7 +343,7 @@ interface SeasonItem {
   endDate: string;
   amount?: string | number;
   totalInstallment?: string | number;
-  approvedPromoters?: string[];
+  activePromoters?: string[];
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
@@ -438,25 +434,14 @@ export default function SeasonsPage() {
     d ? new Date(d).toLocaleDateString() : "-";
 
   return (
-    <div className="space-y-6 relative mt-15 lg:mt-0">
+    <div className="space-y-6">
       <Loader show={loading} />
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Winnerspin Seasons
-          </h1>
-          <p className="text-muted-foreground">
-            Manage promotional seasons and promoter assignments
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/admin/seasons/create">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Season
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Seasons"
+        description="Manage promotional seasons and promoter assignments"
+        actions={<CreateSeasonDialog onSuccess={fetchSeasons} />}
+      />
 
       {curSeason && (
         <Card>
@@ -484,10 +469,10 @@ export default function SeasonsPage() {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">
-                  Approved Promoters
+                  Active Promoters
                 </div>
                 <div className="font-semibold">
-                  {(curSeason.approvedPromoters || []).length}
+                  {(curSeason.activePromoters || []).length}
                 </div>
               </div>
             </div>
@@ -568,7 +553,7 @@ export default function SeasonsPage() {
                     <td className="px-2 py-3">{s.amount ?? "-"}</td>
                     <td className="px-2 py-3">{s.totalInstallment ?? "-"}</td>
                     <td className="px-2 py-3">
-                      {(s.approvedPromoters || []).length}
+                      {(s.activePromoters || []).length}
                     </td>
                     <td className="px-2 py-3">
                       {getSeasonStatus(s.startDate, s.endDate)}
