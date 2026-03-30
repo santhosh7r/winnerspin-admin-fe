@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { promoterAPI } from "@/lib/api";
@@ -35,16 +35,34 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Loader from "@/components/loader";
 
+interface PromoterDetail {
+   _id: string;
+   username: string;
+   userid?: string;
+   email: string;
+   mobNo: string;
+   address?: string;
+   city?: string;
+   state?: string;
+   pincode?: string;
+   isActive?: boolean;
+   parentPromoter?: { username: string };
+   recruitedBy?: { type: string; promoter?: { _id: string; username: string } };
+   payment?: { bankName?: string; accNo?: string; ifscCode?: string; upiId?: string };
+   networkCounts?: { selfMadePromoters?: number; totalNetworkPromoters?: number; selfMadeCustomers?: number; networkCustomers?: number };
+   seasons?: { seasonId: string; seasonName?: string; isActive?: boolean; balance?: number; selfMadeCustomerCount?: number; selfMadeCustomers?: { _id: string; cardNo?: string; username: string; email?: string; mobile?: string; phone?: string; status?: string }[] }[];
+}
+
 export default function PromoterDetailPage() {
    const params = useParams();
    const router = useRouter();
    const promoterId = params.id as string;
 
-   const [promoter, setPromoter] = useState<any>(null);
+   const [promoter, setPromoter] = useState<PromoterDetail | null>(null);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
 
-   const fetchPromoter = async () => {
+   const fetchPromoter = useCallback(async () => {
       try {
          setLoading(true);
          const selectedSeason = localStorage.getItem("selectedSeason");
@@ -57,13 +75,13 @@ export default function PromoterDetailPage() {
       } finally {
          setLoading(false);
       }
-   };
+   }, [promoterId]);
 
    useEffect(() => {
       if (promoterId) {
          fetchPromoter();
       }
-   }, [promoterId]);
+   }, [promoterId, fetchPromoter]);
 
    if (loading && !promoter) {
       return <Loader show={true} />;
@@ -85,7 +103,7 @@ export default function PromoterDetailPage() {
 
    // Find current season info
    const selectedSeason = localStorage.getItem("selectedSeason");
-   const actSeason = promoter.seasons?.find((s: any) => s.seasonId === selectedSeason);
+   const actSeason = promoter.seasons?.find((s) => s.seasonId === selectedSeason);
 
    return (
       <div className="space-y-6 mt-15 lg:mt-0 relative">
@@ -287,7 +305,7 @@ export default function PromoterDetailPage() {
                               </TableRow>
                            </TableHeader>
                            <TableBody>
-                              {actSeason.selfMadeCustomers.map((c: any) => (
+                              {actSeason.selfMadeCustomers.map((c) => (
                                  <TableRow key={c._id}>
                                     <TableCell className="font-medium">{c.cardNo || "-"}</TableCell>
                                     <TableCell>{c.username}</TableCell>
@@ -337,7 +355,7 @@ export default function PromoterDetailPage() {
                               </TableRow>
                            </TableHeader>
                            <TableBody>
-                              {promoter.seasons.map((s: any) => (
+                              {promoter.seasons.map((s) => (
                                  <TableRow key={s.seasonId}>
                                     <TableCell className="font-medium">{s.seasonName}</TableCell>
                                     <TableCell>{s.selfMadeCustomerCount || s.selfMadeCustomers?.length || 0}</TableCell>

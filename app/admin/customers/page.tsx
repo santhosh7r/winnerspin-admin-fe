@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { CustomerTable } from "@/components/customer-table";
 import { Users, Download, UserPlus, FileSearch, UserX } from "lucide-react";

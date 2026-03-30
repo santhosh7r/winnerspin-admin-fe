@@ -83,7 +83,7 @@ export default function RepaymentsPage() {
       const [repaymentsRes, promotersRes] = await Promise.all([
         repaymentAPI.getAll(validSeasonId),
         promoterAPI.getAll(validSeasonId),
-      ]) as any[];
+      ]) as [{ repayments: Repayment[] }, { allPromoters: Promoter[] }];
 
       const enriched: Repayment[] = (repaymentsRes.repayments || [])
         .filter((r: Repayment) => Number(r.installmentNo) > 1)
@@ -95,8 +95,9 @@ export default function RepaymentsPage() {
       });
 
       setRepayments(enriched);
-    } catch (err: any) {
-      if (err?.response?.status !== 404) {
+    } catch (err) {
+      const apiErr = err as { response?: { status?: number }; message?: string };
+      if (apiErr?.response?.status !== 404) {
         setError(err instanceof Error ? err.message : "Failed to fetch repayments");
       }
       setRepayments([]);

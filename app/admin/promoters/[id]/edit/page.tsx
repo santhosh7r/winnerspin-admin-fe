@@ -47,7 +47,7 @@ export default function EditPromoterPage() {
         city: String(raw?.city ?? ""),
         state: String(raw?.state ?? ""),
         pincode: String(raw?.pincode ?? ""),
-        status: (raw as any)?.status === "approved" || (raw as any)?.status === "unapproved" ? (raw as any).status : "unapproved",
+        status: (raw as PromoterFormData & { status?: string })?.status === "approved" || (raw as PromoterFormData & { status?: string })?.status === "unapproved" ? (raw as PromoterFormData & { status?: string }).status as "approved" | "unapproved" : "unapproved",
       };
 
       setPromoter(formatted);

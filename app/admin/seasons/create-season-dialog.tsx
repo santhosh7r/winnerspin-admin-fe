@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { seasonAPI } from "@/lib/api";
 import { Loader2, Plus, Calendar, Users, Search, UserCheck } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
@@ -20,9 +19,19 @@ interface CreateSeasonDialogProps {
   onSuccess: () => void;
 }
 
+interface PromoterEntry {
+  _id: string;
+  username: string;
+  userid?: string;
+  email?: string;
+  mobNo?: string;
+  status?: string;
+  wasActiveLastSeason?: boolean;
+}
+
 export function CreateSeasonDialog({ onSuccess }: CreateSeasonDialogProps) {
   const [open, setOpen] = useState(false);
-  const [promoters, setPromoters] = useState<any[]>([]);
+  const [promoters, setPromoters] = useState<PromoterEntry[]>([]);
   const [activePromoters, setActivePromoters] = useState<Set<string>>(new Set());
   const [loadingPromoters, setLoadingPromoters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -61,17 +70,17 @@ export function CreateSeasonDialog({ onSuccess }: CreateSeasonDialogProps) {
     try {
       setLoadingPromoters(true);
       setErrorStatus(null);
-      const seasonsRes = await seasonAPI.getAll() as any;
+      const seasonsRes = await seasonAPI.getAll() as { curSeason?: { _id: string }; seasons?: { _id: string }[] };
       const latestSeasonId = seasonsRes.curSeason?._id || seasonsRes.seasons?.[0]?._id;
       
-      const pRes = await seasonAPI.getPromotersForNewSeason(latestSeasonId) as any;
+      const pRes = await seasonAPI.getPromotersForNewSeason(latestSeasonId) as { promoters?: PromoterEntry[] };
       const promotersList = pRes.promoters || [];
       setPromoters(promotersList);
       
       // Default pre-selection
       const preselected: string[] = promotersList
-        .filter((p: any) => p.status === "approved" || p.wasActiveLastSeason)
-        .map((p: any) => p._id);
+        .filter((p: PromoterEntry) => p.status === "approved" || p.wasActiveLastSeason)
+        .map((p: PromoterEntry) => p._id);
         
       setActivePromoters(new Set(preselected));
     } catch (err) {
@@ -142,7 +151,7 @@ export function CreateSeasonDialog({ onSuccess }: CreateSeasonDialogProps) {
       await seasonAPI.create(payload);
       setOpen(false);
       onSuccess();
-    } catch (err) {
+    } catch {
       setErrorStatus("Failed to create season. Please check your network and try again.");
     } finally {
       setSubmitting(false);

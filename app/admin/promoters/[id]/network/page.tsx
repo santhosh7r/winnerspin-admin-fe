@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { promoterAPI, seasonAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -33,12 +32,19 @@ import Link from "next/link";
 import Loader from "@/components/loader";
 
 interface NetworkData {
-  promoter: any;
+  promoter: {
+    _id: string;
+    username: string;
+    email: string;
+    mobNo: string;
+    isActive: boolean;
+    parentPromoter?: { username: string };
+  };
   network: {
-    selfMadePromoters: any[];
-    networkPromoters: any[];
-    selfMadeCustomers: any[];
-    networkCustomers: any[];
+    selfMadePromoters: NetworkMember[];
+    networkPromoters: NetworkMember[];
+    selfMadeCustomers: NetworkCustomer[];
+    networkCustomers: NetworkCustomer[];
     counts: {
       selfMadePromoters: number;
       totalNetworkPromoters: number;
@@ -46,6 +52,27 @@ interface NetworkData {
       totalNetworkCustomers: number;
     };
   };
+}
+
+interface NetworkMember {
+  _id: string;
+  userid?: string;
+  username: string;
+  email?: string;
+  mobNo?: string;
+  isActive: boolean;
+  parentPromoter?: { username: string };
+}
+
+interface NetworkCustomer {
+  _id: string;
+  cardNo?: string;
+  username: string;
+  email?: string;
+  mobNo?: string;
+  phone?: string;
+  status?: string;
+  promoter?: { username: string };
 }
 
 export default function PromoterNetworkViewPage() {
@@ -57,40 +84,40 @@ export default function PromoterNetworkViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [seasons, setSeasons] = useState<any[]>([]);
+  const [seasons, setSeasons] = useState<{ _id: string; name?: string; seasonName?: string }[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string>("all");
 
-  const fetchNetwork = async (seasonId?: string) => {
+  const fetchNetwork = useCallback(async (seasonId?: string) => {
     try {
       setLoading(true);
       const res = await promoterAPI.getNetwork(promoterId, seasonId === "all" ? undefined : seasonId);
-      setData(res);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch network data");
+      setData(res as NetworkData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch network data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [promoterId]);
 
-  const fetchSeasons = async () => {
+  const fetchSeasons = useCallback(async () => {
     try {
-      const res = await seasonAPI.getAll();
+      const res = await seasonAPI.getAll() as { seasons?: { _id: string; name?: string; seasonName?: string }[] };
       if (res && res.seasons) {
         setSeasons(res.seasons);
       }
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSeasons();
     fetchNetwork();
-  }, [promoterId]);
+  }, [promoterId, fetchSeasons, fetchNetwork]);
 
   useEffect(() => {
     fetchNetwork(selectedSeason);
-  }, [selectedSeason]);
+  }, [selectedSeason, fetchNetwork]);
 
   if (loading && !data) return <Loader show={true} />;
 
@@ -252,7 +279,7 @@ export default function PromoterNetworkViewPage() {
   );
 }
 
-function PromoterList({ data, showCreatedBy }: { data: any[]; showCreatedBy: boolean }) {
+function PromoterList({ data, showCreatedBy }: { data: NetworkMember[]; showCreatedBy: boolean }) {
   if (!data || data.length === 0) return <div className="text-center p-4 text-muted-foreground">No promoters found</div>;
   return (
     <div className="border rounded-lg bg-card">
@@ -299,7 +326,7 @@ function PromoterList({ data, showCreatedBy }: { data: any[]; showCreatedBy: boo
   );
 }
 
-function CustomerList({ data, showCreatedBy }: { data: any[]; showCreatedBy: boolean }) {
+function CustomerList({ data, showCreatedBy }: { data: NetworkCustomer[]; showCreatedBy: boolean }) {
   if (!data || data.length === 0) return <div className="text-center p-4 text-muted-foreground">No customers found</div>;
   return (
     <div className="border rounded-lg bg-card">

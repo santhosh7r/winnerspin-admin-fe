@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -33,14 +33,12 @@ interface TransactionTableProps {
 export function TransactionTable({
   transactions,
   loading,
-  seasons,
   promoters,
 }: TransactionTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "credit" | "debit">("all");
   const [seasonFilter] = useState<"all" | string>("all");
   const [promoterFilter, setPromoterFilter] = useState<"all" | string>("all");
-
   // ✅ Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 40;

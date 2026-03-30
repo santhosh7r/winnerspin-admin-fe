@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -32,7 +31,6 @@ interface Customer {
 }
 
 export default function RequestsPage() {
-  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -187,7 +185,7 @@ export default function RequestsPage() {
       </Card>
 
       <RejectionDialog
-        customer={rejectionCustomer as any}
+        customer={rejectionCustomer as Customer}
         open={!!rejectionCustomer}
         onOpenChange={(open) => !open && setRejectionCustomer(null)}
         onReject={handleReject}

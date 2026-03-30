@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { cn } from "@/lib/utils";
 
 export default function Loader({ show, inline = false }: { show: boolean; inline?: boolean }) {

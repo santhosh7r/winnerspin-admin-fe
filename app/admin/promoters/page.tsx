@@ -18,14 +18,14 @@ export type Promoter = {
   mobNo: string;
   isActiveInSeason: boolean;
   balance: number;
-  recruitedBy: any;
+  recruitedBy: { type?: string; promoter?: { username?: string } };
   selfMadeCustomerCount: number;
   directSubPromoterCount: number;
 };
 
 export default function PromotersPage() {
   const [promoters, setPromoters] = useState<Promoter[]>([]);
-  const [counts, setCounts] = useState<any>(null);
+  const [counts, setCounts] = useState<{ total: number; activeInSeason: number; inactiveInSeason: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);

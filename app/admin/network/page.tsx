@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Network, Eye } from "lucide-react";
+import { Network } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -27,7 +27,7 @@ export type Promoter = {
   isActive: boolean;
   isActiveInSeason: boolean;
   balance: number;
-  recruitedBy?: any;
+  recruitedBy?: { type?: string; promoter?: { username?: string } };
 };
 
 export default function PromoterNetworkListPage() {

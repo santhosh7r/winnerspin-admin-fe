@@ -21,10 +21,20 @@ export interface SeasonFormData {
 
 interface SeasonFormProps {
   initialData?: Partial<SeasonFormData>;
-  onSubmit: (data: SeasonFormData) => Promise<any>;
+  onSubmit: (data: SeasonFormData) => Promise<SeasonFormData | { stay?: boolean } | void>;
   isEditing?: boolean;
   hidePromoters?: boolean;
   onCancel?: () => void;
+}
+
+interface PromoterEntry {
+  _id: string;
+  username?: string;
+  userid?: string;
+  email?: string;
+  mobNo?: string;
+  status?: string;
+  wasActiveLastSeason?: boolean;
 }
 
 export function SeasonForm({
@@ -38,7 +48,7 @@ export function SeasonForm({
   const [loading, setLoading] = useState(false);
   const [promotersLoading, setPromotersLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
-  const [previousSeasonPromoters, setPreviousSeasonPromoters] = useState<any[]>([]);
+  const [previousSeasonPromoters, setPreviousSeasonPromoters] = useState<PromoterEntry[]>([]);
 
   const [formData, setFormData] = useState<SeasonFormData>({
     Season: initialData?.Season || "",
@@ -60,7 +70,7 @@ export function SeasonForm({
 
   const fetchPreviousSeasonPromoters = async () => {
     try {
-      const response = await seasonAPI.getPreviousPromoters() as any;
+      const response = await seasonAPI.getPreviousPromoters() as { approved?: PromoterEntry[]; nonApproved?: PromoterEntry[] };
       const merged = [
         ...(response.approved || []),
         ...(response.nonApproved || []),
@@ -69,7 +79,7 @@ export function SeasonForm({
 
       setFormData((prev) => ({
         ...prev,
-        approvedPromoters: response.approved?.map((p: any) => p._id) || [],
+        approvedPromoters: response.approved?.map((p: PromoterEntry) => p._id) || [],
       }));
     } catch (err) {
       console.error("Failed to fetch previous season data:", err);
@@ -86,7 +96,8 @@ export function SeasonForm({
 
     try {
       const res = await onSubmit(formData);
-      if (res && res.stay) {
+      const resAny = res as { stay?: boolean } | undefined;
+      if (resAny && resAny.stay) {
         // do not redirect, handled by parent
       } else {
         router.push("/admin/seasons");
@@ -244,10 +255,10 @@ export function SeasonForm({
           {!hidePromoters && (
             <div className="mt-8">
               <PromoterSelector
-                promoters={previousSeasonPromoters}
+                promoters={previousSeasonPromoters as import("./promoter-selector").Promoter[]}
                 selectedPromoters={formData.approvedPromoters}
                 onSelectionChange={(selected) => handleChange("approvedPromoters", selected)}
-                previousSeasonPromoters={previousSeasonPromoters.map((p: any) => p._id)}
+                previousSeasonPromoters={previousSeasonPromoters.map((p: PromoterEntry) => p._id)}
                 loading={promotersLoading}
               />
             </div>

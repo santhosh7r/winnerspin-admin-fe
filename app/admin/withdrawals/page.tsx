@@ -63,9 +63,10 @@ export default function WithdrawalsPage() {
         : [];
 
       setWithdrawals(list);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Withdrawals fetch error:", err);
-      if (err?.response?.status !== 404) {
+      const apiErr = err as { response?: { status?: number } };
+      if (apiErr?.response?.status !== 404) {
         setError("Failed to load withdrawals. Please try again later.");
       }
       setWithdrawals([]);
@@ -101,15 +102,17 @@ export default function WithdrawalsPage() {
   };
 
   const filtered = useMemo(() => {
-    return withdrawals.filter((w: any) => {
-      const username = w.requester?.username || "";
-      const userid = w.requester?.userid || "";
+    return withdrawals.filter((w) => {
+      const username = (w as unknown as { requester?: { username?: string; userid?: string }; amount: number }).requester?.username || "";
+      const userid = (w as unknown as { requester?: { username?: string; userid?: string } }).requester?.userid || "";
+      const amount = (w as unknown as { amount: number }).amount;
+      const status = w.status;
       const matchesSearch = 
         username.toLowerCase().includes(search.toLowerCase()) ||
         userid.toLowerCase().includes(search.toLowerCase()) ||
-        w.amount.toString().includes(search);
+        amount.toString().includes(search);
       
-      const matchesStatus = statusFilter === "all" || w.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [withdrawals, search, statusFilter]);
