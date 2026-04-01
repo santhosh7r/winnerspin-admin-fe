@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { PromoterTable } from "@/components/promoter-table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { dashboardAPI, promoterAPI } from "@/lib/api";
+import { promoterAPI } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Download, ShieldCheck, ShieldOff, Users } from "lucide-react";
 import Link from "next/link";
@@ -40,9 +40,8 @@ export default function PromotersPage() {
 
       if (!seasonId) return;
 
-      const [promotersRes, statsRes] = await Promise.all([
-        promoterAPI.getAll(seasonId),
-        dashboardAPI.getStats(seasonId)
+      const [promotersRes] = await Promise.all([
+        promoterAPI.getAll(seasonId)
       ]);
 
       setPromoters(promotersRes.promoters || []);
@@ -63,7 +62,7 @@ export default function PromotersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [seasonId]);
 
   useEffect(() => {
     fetchPromoters();

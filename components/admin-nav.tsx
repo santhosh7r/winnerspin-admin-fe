@@ -33,7 +33,7 @@ export function AdminNav() {
       // Initialize only if not set in Redux
       if (!seasonId) {
         const selectedId = stored || cur || list[0]?._id || "";
-        const selectedName = list.find((s: any) => s._id === selectedId)?.season || "";
+        const selectedName = list.find((s: { _id: string; season: string }) => s._id === selectedId)?.season || "";
         dispatch(setSeason({ id: selectedId, name: selectedName }));
       }
     } catch (err) {

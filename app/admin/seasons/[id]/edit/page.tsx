@@ -32,7 +32,7 @@ export default function EditSeasonPage() {
       ]);
 
       // normalize possible shapes returned by your API
-      const seasonData: any = seasonResponse?.season || seasonResponse;
+      const seasonData = (seasonResponse as unknown as { season?: Record<string, unknown> })?.season || seasonResponse;
       const normalizedSeason = seasonData || undefined;
 
       if (seasonData?.endDate && new Date(seasonData.endDate) < new Date()) {

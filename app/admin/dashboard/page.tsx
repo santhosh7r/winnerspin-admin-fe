@@ -48,7 +48,7 @@ export default function DashboardPage() {
       }
     }
     loadSeasons();
-  }, []);
+  }, [dispatch]);
 
   const handleSeasonChange = (id: string) => {
     const name = seasons.find(s => s._id === id)?.season || "";

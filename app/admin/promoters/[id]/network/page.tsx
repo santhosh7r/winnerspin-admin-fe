@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { promoterAPI, seasonAPI } from "@/lib/api";
+import { promoterAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,13 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ArrowLeft, Users, Network, UsersIcon, UserPlus } from "lucide-react";
 import Link from "next/link";
 import Loader from "@/components/loader";
@@ -95,16 +88,16 @@ export default function PromoterNetworkViewPage() {
         promoterAPI.getById(promoterId, { seasonId: seasonId || undefined })
       ]);
 
-      const promoterData = (promoterRes as any)?.promoter || promoterRes;
-      const currentSeasonInfo = promoterData?.seasons?.find((s: any) => s.seasonId === seasonId);
+      const promoterData = (promoterRes as unknown as { promoter?: Record<string, unknown> })?.promoter as Record<string, unknown> || promoterRes;
+      const currentSeasonInfo = (promoterData?.seasons as { seasonId: string; isActiveInSeason?: boolean }[] | undefined)?.find(s => s.seasonId === seasonId);
       const isActiveInSeason = currentSeasonInfo ? currentSeasonInfo.isActiveInSeason : false;
 
       setData({
-        ...(networkRes as any),
+        ...(networkRes as unknown as NetworkData),
         promoter: {
-          ...(networkRes as any).promoter,
+          ...(networkRes as unknown as NetworkData).promoter,
           isActiveInSeason: isActiveInSeason,
-          isActive: promoterData?.isActive,
+          isActive: (promoterData as { isActive?: boolean })?.isActive || false,
         }
       });
     } catch (err) {

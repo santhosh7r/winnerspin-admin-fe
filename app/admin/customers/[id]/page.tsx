@@ -78,7 +78,7 @@ export default function CustomerDetailPage() {
     try {
       const seasonId = typeof window !== "undefined" ? localStorage.getItem("selectedSeason") : null;
       if (!seasonId) return;
-      const seasonRes = await seasonAPI.getById(seasonId) as any;
+      const seasonRes = (await seasonAPI.getById(seasonId)) as unknown as { season?: { endDate?: string }; endDate?: string };
       const endDate = seasonRes?.season?.endDate || seasonRes?.endDate;
       if (endDate) {
         setIsReadOnly(new Date(endDate) < new Date());

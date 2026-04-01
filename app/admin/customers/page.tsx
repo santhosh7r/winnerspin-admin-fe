@@ -12,8 +12,8 @@ import { customerAPI } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Download, FileSearch, UserPlus, Users, UserX } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 
 import {
@@ -52,7 +52,6 @@ function StatCard({ label, value, icon: Icon, colorClass }: {
 }
 
 export default function CustomersPage() {
-  const dispatch = useDispatch();
   const seasonId = useSelector((state: RootState) => state.season.id);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -72,13 +71,7 @@ export default function CustomersPage() {
     rejected: 0,
   });
 
-  useEffect(() => {
-    if (seasonId) {
-      loadCustomers(seasonId);
-    }
-  }, [seasonId]);
-
-  const loadCustomers = async (sId: string = seasonId) => {
+  const loadCustomers = useCallback(async (sId: string = seasonId) => {
     if (!sId) {
       setError("No season selected");
       setLoading(false);
@@ -114,7 +107,13 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [seasonId]);
+
+  useEffect(() => {
+    if (seasonId) {
+      loadCustomers(seasonId);
+    }
+  }, [seasonId, loadCustomers]);
 
   const goToRequests = () => {
     router.push("/admin/requests");

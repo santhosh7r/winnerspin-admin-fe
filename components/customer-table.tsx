@@ -100,7 +100,7 @@ export function CustomerTable({
             ? localStorage.getItem("selectedSeason")
             : null;
         if (!seasonId) return;
-        const seasonRes = (await seasonAPI.getById(seasonId)) as any;
+        const seasonRes = (await seasonAPI.getById(seasonId)) as unknown as { season?: { endDate?: string }; endDate?: string };
         const endDate = seasonRes?.season?.endDate || seasonRes?.endDate;
         if (endDate) {
           setIsReadOnly(new Date(endDate) < new Date());
@@ -369,7 +369,7 @@ export function CustomerTable({
                                     promoterId:
                                       customer.promoter?._id?.toString() || "",
                                     seasonId:
-                                      (customer as any).season?.toString() || customer.seasonId || customer.seasons?.[0]?._id?.toString() ||
+                                      (customer as unknown as Record<string, unknown>).season?.toString() || customer.seasonId || customer.seasons?.[0]?._id?.toString() ||
                                       "",
                                   });
                                 } finally {
