@@ -1,25 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { seasonAPI } from "@/lib/api";
 import { DashboardContent } from "@/components/dashboard/dashboardcontent";
 import { PageHeader } from "@/components/page-header";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { seasonAPI } from "@/lib/api";
+import { useEffect, useState } from "react";
 
 interface Season {
   _id: string;
   season: string;
 }
 
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { setSeason } from "@/store/seasonSlice";
+
 export default function DashboardPage() {
-  const [seasonId, setSeasonId] = useState<string>("");
+  const dispatch = useDispatch();
+  const seasonId = useSelector((state: RootState) => state.season.id);
+
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,8 +39,8 @@ export default function DashboardPage() {
         const stored = localStorage.getItem("selectedSeason");
         const cur = res?.curSeason?._id;
         const selected = stored || cur || list[0]?._id || "";
-        setSeasonId(selected);
-        if (selected) localStorage.setItem("selectedSeason", selected);
+        const name = list.find(s => s._id === selected)?.season || "";
+        dispatch(setSeason({ id: selected, name }));
       } catch (err) {
         console.error("Error loading seasons:", err);
       } finally {
@@ -45,8 +51,8 @@ export default function DashboardPage() {
   }, []);
 
   const handleSeasonChange = (id: string) => {
-    setSeasonId(id);
-    localStorage.setItem("selectedSeason", id);
+    const name = seasons.find(s => s._id === id)?.season || "";
+    dispatch(setSeason({ id, name }));
   };
 
   if (loading) {

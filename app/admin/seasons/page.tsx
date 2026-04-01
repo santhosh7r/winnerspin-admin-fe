@@ -559,12 +559,16 @@ export default function SeasonsPage() {
                       {getSeasonStatus(s.startDate, s.endDate)}
                     </td>
                     <td className="px-2 py-3">
-                      <button
-                        onClick={() => setDeleteSeason(s)}
-                        className="text-destructive hover:underline"
-                      >
-                        Delete
-                      </button>
+                      {getSeasonStatus(s.startDate, s.endDate) === "completed" ? (
+                        <span className="text-muted-foreground text-xs uppercase font-semibold">Read Only</span>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteSeason(s)}
+                          className="text-destructive hover:underline font-medium"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -27,7 +27,7 @@ interface Repayment {
 interface RepaymentTableProps {
   repayments: Repayment[];
   loading: boolean;
-  onApprove: (installmentId: string, promoterId: string) => void;
+  onApprove?: (installmentId: string, promoterId: string) => void;
   approvingIds: string[];
 }
 
@@ -101,14 +101,18 @@ export function RepaymentTable({
               </TableCell>
               <TableCell className="text-right pr-6">
                 {!r.isVerified ? (
-                  <Button
-                    size="sm"
-                    className="bg-black hover:bg-black/90 text-[11px] font-bold uppercase tracking-widest dark:bg-white dark:text-black dark:hover:bg-white/90"
-                    disabled={approvingIds.includes(r._id)}
-                    onClick={() => onApprove(r._id, r.customer.promoter)}
-                  >
-                    {approvingIds.includes(r._id) ? "Approving..." : "Approve"}
-                  </Button>
+                  onApprove ? (
+                    <Button
+                      size="sm"
+                      className="bg-black hover:bg-black/90 text-[11px] font-bold uppercase tracking-widest dark:bg-white dark:text-black dark:hover:bg-white/90"
+                      disabled={approvingIds.includes(r._id)}
+                      onClick={() => onApprove(r._id, r.customer.promoter)}
+                    >
+                      {approvingIds.includes(r._id) ? "Approving..." : "Approve"}
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground uppercase font-semibold">Read Only</span>
+                  )
                 ) : (
                   <div className="flex items-center justify-end text-emerald-600 gap-1.5 font-bold uppercase text-[10px] tracking-widest">
                     <CheckCircle className="h-3.5 w-3.5" />

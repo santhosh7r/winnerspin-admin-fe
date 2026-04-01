@@ -189,6 +189,12 @@ export const customerAPI = {
     apiRequest(`/delete-customer/${id}`, {
       method: "DELETE",
     }),
+
+  updateProductDetails: (id: string, productDetails: string) =>
+    apiRequest(`/customer/${id}/product-details`, {
+      method: "PUT",
+      body: JSON.stringify({ productDetails }),
+    }),
 };
 
 // ===========================

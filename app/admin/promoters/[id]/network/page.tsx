@@ -38,6 +38,7 @@ interface NetworkData {
     email: string;
     mobNo: string;
     isActive: boolean;
+    isActiveInSeason?: boolean;
     parentPromoter?: { username: string };
   };
   network: {
@@ -84,14 +85,28 @@ export default function PromoterNetworkViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [seasons, setSeasons] = useState<{ _id: string; name?: string; seasonName?: string }[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<string>("all");
-
-  const fetchNetwork = useCallback(async (seasonId?: string) => {
+  const fetchNetwork = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await promoterAPI.getNetwork(promoterId, seasonId === "all" ? undefined : seasonId);
-      setData(res as NetworkData);
+      const seasonId = typeof window !== "undefined" ? localStorage.getItem("selectedSeason") : null;
+      
+      const [networkRes, promoterRes] = await Promise.all([
+        promoterAPI.getNetwork(promoterId, seasonId || undefined),
+        promoterAPI.getById(promoterId, { seasonId: seasonId || undefined })
+      ]);
+
+      const promoterData = (promoterRes as any)?.promoter || promoterRes;
+      const currentSeasonInfo = promoterData?.seasons?.find((s: any) => s.seasonId === seasonId);
+      const isActiveInSeason = currentSeasonInfo ? currentSeasonInfo.isActiveInSeason : false;
+
+      setData({
+        ...(networkRes as any),
+        promoter: {
+          ...(networkRes as any).promoter,
+          isActiveInSeason: isActiveInSeason,
+          isActive: promoterData?.isActive,
+        }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch network data");
     } finally {
@@ -99,25 +114,17 @@ export default function PromoterNetworkViewPage() {
     }
   }, [promoterId]);
 
-  const fetchSeasons = useCallback(async () => {
-    try {
-      const res = await seasonAPI.getAll() as { seasons?: { _id: string; name?: string; seasonName?: string }[] };
-      if (res && res.seasons) {
-        setSeasons(res.seasons);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchSeasons();
     fetchNetwork();
-  }, [promoterId, fetchSeasons, fetchNetwork]);
 
-  useEffect(() => {
-    fetchNetwork(selectedSeason);
-  }, [selectedSeason, fetchNetwork]);
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "selectedSeason") {
+        fetchNetwork();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [fetchNetwork]);
 
   if (loading && !data) return <Loader show={true} />;
 
@@ -152,19 +159,6 @@ export default function PromoterNetworkViewPage() {
           </Button>
           <h1 className="text-3xl font-bold text-foreground">Promoter Network</h1>
         </div>
-        <div className="w-[200px]">
-          <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by Season" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Seasons</SelectItem>
-              {seasons.map((s) => (
-                <SelectItem key={s._id} value={s._id}>{s.name || s.seasonName || "Unnamed Season"}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {/* Promoter Info Card */}
@@ -182,8 +176,8 @@ export default function PromoterNetworkViewPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <Badge variant={promoter.isActive ? "default" : "destructive"}>
-                {promoter.isActive ? "Active" : "Inactive"}
+              <Badge variant={promoter.isActiveInSeason ? "default" : "destructive"}>
+                {promoter.isActiveInSeason ? "Active" : "Inactive"}
               </Badge>
             </div>
             <div>

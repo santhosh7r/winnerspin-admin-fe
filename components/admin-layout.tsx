@@ -1,11 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
-import { AdminSidebar, SidebarProvider, useSidebar } from "./admin-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
 import Loader from "@/components/loader";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { AdminSidebar, SidebarProvider, useSidebar } from "./admin-sidebar";
+import { AdminNav } from "./admin-nav";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -55,6 +56,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           isCollapsed ? "lg:pl-20" : "lg:pl-64"
         )}
       >
+        <AdminNav />
         <main className="p-4 lg:p-8 min-h-screen relative">
           <Suspense fallback={<Loader show={true} />}>
             {children}

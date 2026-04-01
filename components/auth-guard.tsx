@@ -1,10 +1,10 @@
 "use client";
 
+import { loadFromStorage } from "@/store/authSlice";
+import type { RootState } from "@/store/store";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import type { RootState } from "@/store/store";
-import { loadFromStorage } from "@/store/authSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 interface AuthGuardProps {
   children: React.ReactNode;

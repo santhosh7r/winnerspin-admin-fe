@@ -23,7 +23,11 @@ export type Promoter = {
   directSubPromoterCount: number;
 };
 
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+
 export default function PromotersPage() {
+  const seasonId = useSelector((state: RootState) => state.season.id);
   const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [counts, setCounts] = useState<{ total: number; activeInSeason: number; inactiveInSeason: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,26 +38,24 @@ export default function PromotersPage() {
     try {
       if (showLoader) setLoading(true);
 
-      const selectedSeason = localStorage.getItem("selectedSeason");
-      if (!selectedSeason)
-        throw new Error("No season selected in local storage");
+      if (!seasonId) return;
 
       const [promotersRes, statsRes] = await Promise.all([
-        promoterAPI.getAll(selectedSeason),
-        dashboardAPI.getStats(selectedSeason)
+        promoterAPI.getAll(seasonId),
+        dashboardAPI.getStats(seasonId)
       ]);
 
       setPromoters(promotersRes.promoters || []);
       
-      if (statsRes && statsRes.stats) {
-        setCounts({
-          total: statsRes.stats.totalPromoters || 0,
-          activeInSeason: statsRes.stats.activeInSeason || 0,
-          inactiveInSeason: statsRes.stats.inactiveInSeason || 0,
-        });
-      } else {
-        setCounts(null);
-      }
+      const promotersList = promotersRes.promoters || [];
+      const activeInSeason = promotersList.filter((p: Promoter) => p.isActiveInSeason).length;
+      const total = promotersList.length;
+
+      setCounts({
+        total: total,
+        activeInSeason: activeInSeason,
+        inactiveInSeason: total - activeInSeason,
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch promoters"

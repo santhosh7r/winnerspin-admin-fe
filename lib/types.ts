@@ -159,6 +159,7 @@ export interface Customer {
   seasonName?: string;
   createdAt: string;
   updatedAt?: string;
+  productDetails?: string;
   promoter?: Promoter;
   seasons?: Season[];
   isApproved?: boolean;
