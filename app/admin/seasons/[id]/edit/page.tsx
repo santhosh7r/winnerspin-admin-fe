@@ -14,6 +14,7 @@ export default function EditSeasonPage() {
   // const [promoters, setPromoters] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   useEffect(() => {
     if (seasonId) fetchSeasonAndPromoters(seasonId);
@@ -31,11 +32,12 @@ export default function EditSeasonPage() {
       ]);
 
       // normalize possible shapes returned by your API
-      const normalizedSeason =
-        (seasonResponse &&
-          (seasonResponse.season ? seasonResponse : seasonResponse.season)) ||
-        seasonResponse ||
-        undefined;
+      const seasonData = (seasonResponse as unknown as { season?: Record<string, unknown> })?.season || seasonResponse;
+      const normalizedSeason = seasonData || undefined;
+
+      if (seasonData?.endDate && new Date(seasonData.endDate) < new Date()) {
+        setIsReadOnly(true);
+      }
 
       setSeason(normalizedSeason ?? undefined);
       // setPromoters(promotersResponse?.allPromoters ?? promotersResponse ?? []);
@@ -85,7 +87,13 @@ export default function EditSeasonPage() {
         </div>
       )}
 
-      <SeasonForm initialData={season} onSubmit={handleSubmit} isEditing />
+      {isReadOnly ? (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 p-4 rounded-lg font-bold">
+          This season has ended. Historical seasons cannot be edited.
+        </div>
+      ) : (
+        <SeasonForm initialData={season} onSubmit={handleSubmit} isEditing />
+      )}
     </div>
   );
 }

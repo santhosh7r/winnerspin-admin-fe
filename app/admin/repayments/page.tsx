@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { repaymentAPI, promoterAPI } from "@/lib/api";
+import { repaymentAPI, promoterAPI, seasonAPI } from "@/lib/api";
 import { RepaymentTable } from "@/components/repayment-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ export default function RepaymentsPage() {
   const [exporting, setExporting] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   const seasonId = typeof window !== "undefined"
     ? localStorage.getItem("selectedSeason") ?? ""
@@ -83,7 +84,7 @@ export default function RepaymentsPage() {
       const [repaymentsRes, promotersRes] = await Promise.all([
         repaymentAPI.getAll(validSeasonId),
         promoterAPI.getAll(validSeasonId),
-      ]) as any[];
+      ]) as [{ repayments: Repayment[] }, { allPromoters: Promoter[] }];
 
       const enriched: Repayment[] = (repaymentsRes.repayments || [])
         .filter((r: Repayment) => Number(r.installmentNo) > 1)
@@ -94,9 +95,20 @@ export default function RepaymentsPage() {
           return { ...r, promoterName: promoter?.username || "Unknown" };
       });
 
+      try {
+        const seasonRes = (await seasonAPI.getById(validSeasonId)) as unknown as { season?: { endDate?: string }; endDate?: string };
+        const endDate = seasonRes?.season?.endDate || seasonRes?.endDate;
+        if (endDate) {
+          setIsReadOnly(new Date(endDate) < new Date());
+        }
+      } catch (e) {
+        console.error("Failed to fetch season status", e);
+      }
+
       setRepayments(enriched);
-    } catch (err: any) {
-      if (err?.response?.status !== 404) {
+    } catch (err) {
+      const apiErr = err as { response?: { status?: number }; message?: string };
+      if (apiErr?.response?.status !== 404) {
         setError(err instanceof Error ? err.message : "Failed to fetch repayments");
       }
       setRepayments([]);
@@ -183,6 +195,13 @@ export default function RepaymentsPage() {
         }
       />
 
+      {isReadOnly && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3">
+          <Clock className="h-4 w-4" />
+          This is a historical season. Approvals are disabled.
+        </div>
+      )}
+
       {error && !loading && (
         <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-600 px-4 py-3 rounded-lg text-sm font-semibold">
           <XCircle className="h-4 w-4 shrink-0" />
@@ -257,7 +276,7 @@ export default function RepaymentsPage() {
                 <RepaymentTable
                   repayments={filtered}
                   loading={false}
-                  onApprove={handleApprove}
+                  onApprove={isReadOnly ? undefined : handleApprove}
                   approvingIds={approvingIds}
                 />
               )}

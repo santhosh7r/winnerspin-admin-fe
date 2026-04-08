@@ -33,7 +33,7 @@ export function DashboardContent({ seasonId }: { seasonId: string }) {
         }
 
         setStats(data.stats as StatsResponse);
-        setRecent({} as any); // Removed recent data fetch since it was removed from UI
+        setRecent({} as DashboardRecent); // Removed recent data fetch since it was removed from UI
       } catch (err) {
         console.error("Dashboard fetch error:", err);
         setError(

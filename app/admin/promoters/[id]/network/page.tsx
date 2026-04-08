@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { promoterAPI, seasonAPI } from "@/lib/api";
+import { promoterAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -21,24 +20,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ArrowLeft, Users, Network, UsersIcon, UserPlus } from "lucide-react";
 import Link from "next/link";
 import Loader from "@/components/loader";
 
 interface NetworkData {
-  promoter: any;
+  promoter: {
+    _id: string;
+    username: string;
+    email: string;
+    mobNo: string;
+    isActive: boolean;
+    isActiveInSeason?: boolean;
+    parentPromoter?: { username: string };
+  };
   network: {
-    selfMadePromoters: any[];
-    networkPromoters: any[];
-    selfMadeCustomers: any[];
-    networkCustomers: any[];
+    selfMadePromoters: NetworkMember[];
+    networkPromoters: NetworkMember[];
+    selfMadeCustomers: NetworkCustomer[];
+    networkCustomers: NetworkCustomer[];
     counts: {
       selfMadePromoters: number;
       totalNetworkPromoters: number;
@@ -46,6 +46,27 @@ interface NetworkData {
       totalNetworkCustomers: number;
     };
   };
+}
+
+interface NetworkMember {
+  _id: string;
+  userid?: string;
+  username: string;
+  email?: string;
+  mobNo?: string;
+  isActive: boolean;
+  parentPromoter?: { username: string };
+}
+
+interface NetworkCustomer {
+  _id: string;
+  cardNo?: string;
+  username: string;
+  email?: string;
+  mobNo?: string;
+  phone?: string;
+  status?: string;
+  promoter?: { username: string };
 }
 
 export default function PromoterNetworkViewPage() {
@@ -57,40 +78,46 @@ export default function PromoterNetworkViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [seasons, setSeasons] = useState<any[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<string>("all");
-
-  const fetchNetwork = async (seasonId?: string) => {
+  const fetchNetwork = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await promoterAPI.getNetwork(promoterId, seasonId === "all" ? undefined : seasonId);
-      setData(res);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch network data");
+      const seasonId = typeof window !== "undefined" ? localStorage.getItem("selectedSeason") : null;
+      
+      const [networkRes, promoterRes] = await Promise.all([
+        promoterAPI.getNetwork(promoterId, seasonId || undefined),
+        promoterAPI.getById(promoterId, { seasonId: seasonId || undefined })
+      ]);
+
+      const promoterData = (promoterRes as unknown as { promoter?: Record<string, unknown> })?.promoter as Record<string, unknown> || promoterRes;
+      const currentSeasonInfo = (promoterData?.seasons as { seasonId: string; isActiveInSeason?: boolean }[] | undefined)?.find(s => s.seasonId === seasonId);
+      const isActiveInSeason = currentSeasonInfo ? currentSeasonInfo.isActiveInSeason : false;
+
+      setData({
+        ...(networkRes as unknown as NetworkData),
+        promoter: {
+          ...(networkRes as unknown as NetworkData).promoter,
+          isActiveInSeason: isActiveInSeason,
+          isActive: (promoterData as { isActive?: boolean })?.isActive || false,
+        }
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch network data");
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchSeasons = async () => {
-    try {
-      const res = await seasonAPI.getAll();
-      if (res && res.seasons) {
-        setSeasons(res.seasons);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchSeasons();
-    fetchNetwork();
   }, [promoterId]);
 
   useEffect(() => {
-    fetchNetwork(selectedSeason);
-  }, [selectedSeason]);
+    fetchNetwork();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "selectedSeason") {
+        fetchNetwork();
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [fetchNetwork]);
 
   if (loading && !data) return <Loader show={true} />;
 
@@ -125,19 +152,6 @@ export default function PromoterNetworkViewPage() {
           </Button>
           <h1 className="text-3xl font-bold text-foreground">Promoter Network</h1>
         </div>
-        <div className="w-[200px]">
-          <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by Season" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Seasons</SelectItem>
-              {seasons.map((s) => (
-                <SelectItem key={s._id} value={s._id}>{s.name || s.seasonName || "Unnamed Season"}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {/* Promoter Info Card */}
@@ -155,8 +169,8 @@ export default function PromoterNetworkViewPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <Badge variant={promoter.isActive ? "default" : "destructive"}>
-                {promoter.isActive ? "Active" : "Inactive"}
+              <Badge variant={promoter.isActiveInSeason ? "default" : "destructive"}>
+                {promoter.isActiveInSeason ? "Active" : "Inactive"}
               </Badge>
             </div>
             <div>
@@ -252,7 +266,7 @@ export default function PromoterNetworkViewPage() {
   );
 }
 
-function PromoterList({ data, showCreatedBy }: { data: any[]; showCreatedBy: boolean }) {
+function PromoterList({ data, showCreatedBy }: { data: NetworkMember[]; showCreatedBy: boolean }) {
   if (!data || data.length === 0) return <div className="text-center p-4 text-muted-foreground">No promoters found</div>;
   return (
     <div className="border rounded-lg bg-card">
@@ -299,7 +313,7 @@ function PromoterList({ data, showCreatedBy }: { data: any[]; showCreatedBy: boo
   );
 }
 
-function CustomerList({ data, showCreatedBy }: { data: any[]; showCreatedBy: boolean }) {
+function CustomerList({ data, showCreatedBy }: { data: NetworkCustomer[]; showCreatedBy: boolean }) {
   if (!data || data.length === 0) return <div className="text-center p-4 text-muted-foreground">No customers found</div>;
   return (
     <div className="border rounded-lg bg-card">

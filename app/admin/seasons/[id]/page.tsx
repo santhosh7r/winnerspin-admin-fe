@@ -263,12 +263,12 @@ export default function SeasonDetailPage() {
                           <Badge
                             variant="secondary"
                             className={
-                              seasonResponse.activePromoters?.includes(promoter._id)
+                              season.activePromoters?.includes(promoter._id)
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             }
                           >
-                            {seasonResponse.activePromoters?.includes(promoter._id) ? "Active" : "Inactive"}
+                            {season.activePromoters?.includes(promoter._id) ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
                       </TableRow>

@@ -3,8 +3,8 @@
 // ===========================
 // BASE CONFIG
 // ===========================
-// export const API_BASE_URL = "https://api.winnerspin.in.net/admin";
-export const API_BASE_URL = "http://localhost:3000/admin";
+export const API_BASE_URL = "https://api.winnerspin.in.net/admin";
+// export const API_BASE_URL = "http://localhost:3000/admin";
 
 
 export const apiRequest = async (
@@ -188,6 +188,12 @@ export const customerAPI = {
   delete: (id: string) =>
     apiRequest(`/delete-customer/${id}`, {
       method: "DELETE",
+    }),
+
+  updateProductDetails: (id: string, productDetails: string) =>
+    apiRequest(`/customer/${id}/product-details`, {
+      method: "PUT",
+      body: JSON.stringify({ productDetails }),
     }),
 };
 

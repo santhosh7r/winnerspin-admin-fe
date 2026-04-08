@@ -22,14 +22,12 @@ import {
   ChevronRight,
   CreditCard,
   FileImage,
-  FileSearch,
+  GitGraph,
   LayoutDashboard,
   LogOut,
   Menu,
-  Network,
   UserCheck,
   Users,
-  GitGraph,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";

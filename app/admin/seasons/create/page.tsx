@@ -13,9 +13,18 @@ import { AlertCircle, Calendar, Loader2, Search, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
+interface PromoterEntry {
+  _id: string;
+  username: string;
+  userid?: string;
+  mobNo?: string;
+  wasActiveLastSeason?: boolean;
+  networkPosition?: { type: string; parentPromoter?: { username: string } };
+}
+
 export default function CreateSeasonPage() {
   const router = useRouter();
-  const [promoters, setPromoters] = useState<any[]>([]);
+  const [promoters, setPromoters] = useState<PromoterEntry[]>([]);
   const [activePromoters, setActivePromoters] = useState<Set<string>>(new Set());
   const [loadingPromoters, setLoadingPromoters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -40,16 +49,16 @@ export default function CreateSeasonPage() {
     try {
       setLoadingPromoters(true);
       setError(null);
-      const seasonsRes = await seasonAPI.getAll() as any;
+      const seasonsRes = await seasonAPI.getAll() as { curSeason?: { _id: string }; seasons?: { _id: string }[] };
       const latestSeasonId = seasonsRes.curSeason?._id || seasonsRes.seasons?.[0]?._id;
       
-      const pRes = await seasonAPI.getPromotersForNewSeason(latestSeasonId) as any;
+      const pRes = await seasonAPI.getPromotersForNewSeason(latestSeasonId) as { promoters?: PromoterEntry[] };
       const promotersList = pRes.promoters || [];
       setPromoters(promotersList);
       
       const preselected: string[] = promotersList
-        .filter((p: any) => p.wasActiveLastSeason)
-        .map((p: any) => p._id);
+        .filter((p: PromoterEntry) => p.wasActiveLastSeason)
+        .map((p: PromoterEntry) => p._id);
         
       setActivePromoters(new Set(preselected));
     } catch (err) {
@@ -113,7 +122,7 @@ export default function CreateSeasonPage() {
       };
       await seasonAPI.create(payload);
       router.push("/admin/seasons");
-    } catch (err) {
+    } catch {
       setError("Something went wrong while creating the season.");
     } finally {
       setSubmitting(false);

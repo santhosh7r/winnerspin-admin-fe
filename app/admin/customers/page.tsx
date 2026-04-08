@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { CustomerTable } from "@/components/customer-table";
-import { Users, Download, UserPlus, FileSearch, UserX } from "lucide-react";
-import { customerAPI } from "@/lib/api";
 import Loader from "@/components/loader";
-import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+} from "@/components/ui/card";
+import { customerAPI } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Download, FileSearch, UserPlus, Users, UserX } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
 // ✅ use unified type from lib/types.ts
@@ -52,6 +52,8 @@ function StatCard({ label, value, icon: Icon, colorClass }: {
 }
 
 export default function CustomersPage() {
+  const seasonId = useSelector((state: RootState) => state.season.id);
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -69,13 +71,8 @@ export default function CustomersPage() {
     rejected: 0,
   });
 
-  useEffect(() => {
-    loadCustomers();
-  }, []);
-
-  const loadCustomers = async () => {
-    const seasonId = typeof window !== "undefined" ? localStorage.getItem("selectedSeason") : null;
-    if (!seasonId) {
+  const loadCustomers = useCallback(async (sId: string = seasonId) => {
+    if (!sId) {
       setError("No season selected");
       setLoading(false);
       return;
@@ -85,7 +82,7 @@ export default function CustomersPage() {
       setLoading(true);
       setError(null);
       
-      const statsResponse = await customerAPI.getStats(seasonId);
+      const statsResponse = await customerAPI.getStats(sId);
       if (statsResponse?.stats) {
         setStats({
           total: statsResponse.stats.totalCustomers || 0,
@@ -110,7 +107,13 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [seasonId]);
+
+  useEffect(() => {
+    if (seasonId) {
+      loadCustomers(seasonId);
+    }
+  }, [seasonId, loadCustomers]);
 
   const goToRequests = () => {
     router.push("/admin/requests");
@@ -266,7 +269,7 @@ export default function CustomersPage() {
                     No customers found — try refreshing or go to Requests.
                   </p>
                   <button
-                    onClick={loadCustomers}
+                    onClick={() => loadCustomers()}
                     className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-500"
                   >
                     Refresh
@@ -282,6 +285,7 @@ export default function CustomersPage() {
               loading={false}
               showActions={true}
               onDelete={handleDeleteRequest}
+              fetchNewCustomers={loadCustomers}
             />
           )}
         </div>

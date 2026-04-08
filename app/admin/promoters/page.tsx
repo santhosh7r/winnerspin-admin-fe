@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { PromoterTable } from "@/components/promoter-table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { dashboardAPI, promoterAPI } from "@/lib/api";
+import { promoterAPI } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Download, ShieldCheck, ShieldOff, Users } from "lucide-react";
 import Link from "next/link";
@@ -18,14 +18,18 @@ export type Promoter = {
   mobNo: string;
   isActiveInSeason: boolean;
   balance: number;
-  recruitedBy: any;
+  recruitedBy: { type?: string; promoter?: { username?: string } };
   selfMadeCustomerCount: number;
   directSubPromoterCount: number;
 };
 
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+
 export default function PromotersPage() {
+  const seasonId = useSelector((state: RootState) => state.season.id);
   const [promoters, setPromoters] = useState<Promoter[]>([]);
-  const [counts, setCounts] = useState<any>(null);
+  const [counts, setCounts] = useState<{ total: number; activeInSeason: number; inactiveInSeason: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,26 +38,23 @@ export default function PromotersPage() {
     try {
       if (showLoader) setLoading(true);
 
-      const selectedSeason = localStorage.getItem("selectedSeason");
-      if (!selectedSeason)
-        throw new Error("No season selected in local storage");
+      if (!seasonId) return;
 
-      const [promotersRes, statsRes] = await Promise.all([
-        promoterAPI.getAll(selectedSeason),
-        dashboardAPI.getStats(selectedSeason)
+      const [promotersRes] = await Promise.all([
+        promoterAPI.getAll(seasonId)
       ]);
 
       setPromoters(promotersRes.promoters || []);
       
-      if (statsRes && statsRes.stats) {
-        setCounts({
-          total: statsRes.stats.totalPromoters || 0,
-          activeInSeason: statsRes.stats.activeInSeason || 0,
-          inactiveInSeason: statsRes.stats.inactiveInSeason || 0,
-        });
-      } else {
-        setCounts(null);
-      }
+      const promotersList = promotersRes.promoters || [];
+      const activeInSeason = promotersList.filter((p: Promoter) => p.isActiveInSeason).length;
+      const total = promotersList.length;
+
+      setCounts({
+        total: total,
+        activeInSeason: activeInSeason,
+        inactiveInSeason: total - activeInSeason,
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch promoters"
@@ -61,7 +62,7 @@ export default function PromotersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [seasonId]);
 
   useEffect(() => {
     fetchPromoters();

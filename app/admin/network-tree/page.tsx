@@ -26,7 +26,7 @@ export default function NetworkTreePage() {
     try {
       setLoading(true);
       const selectedSeason = localStorage.getItem("selectedSeason") || undefined;
-      const response = await promoterAPI.getNetworkTree(selectedSeason) as any;
+      const response = await promoterAPI.getNetworkTree(selectedSeason) as { tree?: TreeNode[]; note?: string };
       setTreeData(response.tree || []);
       setNote(response.note || null);
     } catch (err) {
@@ -50,7 +50,7 @@ export default function NetworkTreePage() {
   }, [fetchTree]);
 
   const renderNode = (node: TreeNode, depth: number = 0) => {
-    let cardWrapperClass = "mb-4 ms-6 relative";
+    const cardWrapperClass = "mb-4 ms-6 relative";
     let cardClass = "w-64 ";
 
     if (node.isActiveInSeason === true) {

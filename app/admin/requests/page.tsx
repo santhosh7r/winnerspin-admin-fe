@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { CustomerTable } from "@/components/customer-table";
 import { RejectionDialog } from "@/components/rejection-dialog";
-import { customerAPI } from "@/lib/api";
+import { customerAPI, seasonAPI } from "@/lib/api";
 import { Clock, CheckCircle, XCircle } from "lucide-react";
 import Loader from "@/components/loader";
 import { PageHeader } from "@/components/page-header";
@@ -32,13 +31,13 @@ interface Customer {
 }
 
 export default function RequestsPage() {
-  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rejectionCustomer, setRejectionCustomer] = useState<Customer | null>(
     null
   );
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   const [stats, setStats] = useState({
     pending: 0,
@@ -60,6 +59,16 @@ export default function RequestsPage() {
 
     try {
       setLoading(true);
+      
+      try {
+        const seasonRes = (await seasonAPI.getById(seasonId)) as unknown as { season?: { endDate?: string }; endDate?: string };
+        const endDate = seasonRes?.season?.endDate || seasonRes?.endDate;
+        if (endDate) {
+          setIsReadOnly(new Date(endDate) < new Date());
+        }
+      } catch (e) {
+        console.error("Failed to fetch season status", e);
+      }
       
       const statsResponse = await customerAPI.getRequestStats(seasonId);
       if (statsResponse?.stats) {
@@ -120,6 +129,13 @@ export default function RequestsPage() {
         showBack={true}
       />
 
+      {isReadOnly && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3">
+          <Clock className="h-4 w-4" />
+          This is a historical season. Approvals are disabled.
+        </div>
+      )}
+
       {/* Stats Cards - Polished Premium Look */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 hover:shadow-sm transition-all group">
@@ -178,8 +194,8 @@ export default function RequestsPage() {
             <CustomerTable
               customers={customers}
               loading={loading}
-              onReject={setRejectionCustomer}
-              handleApprove={handleApprove}
+              onReject={isReadOnly ? undefined : setRejectionCustomer}
+              handleApprove={isReadOnly ? undefined : handleApprove}
               fetchNewCustomers={fetchNewCustomers}
             />
           )}
@@ -187,7 +203,7 @@ export default function RequestsPage() {
       </Card>
 
       <RejectionDialog
-        customer={rejectionCustomer as any}
+        customer={rejectionCustomer as Customer}
         open={!!rejectionCustomer}
         onOpenChange={(open) => !open && setRejectionCustomer(null)}
         onReject={handleReject}

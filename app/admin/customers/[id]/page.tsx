@@ -11,9 +11,20 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { customerAPI } from "@/lib/api";
+import { customerAPI, seasonAPI } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
+  Edit2,
+  Package,
+  Loader2,
 } from "lucide-react";
 
 interface Installment {
@@ -37,6 +48,8 @@ interface Customer {
   status: "pending" | "approved" | "rejected";
   promoterName?: string;
   seasonNames?: string;
+  seasonId?: string;
+  productDetails?: string;
   createdAt: string;
   approvedAt?: string;
   installments?: Installment[];
@@ -49,9 +62,31 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [productDetailsText, setProductDetailsText] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
   useEffect(() => {
-    if (params.id) fetchCustomer(params.id as string);
+    if (params.id) {
+       fetchCustomer(params.id as string);
+       fetchSeasonStatus();
+    }
   }, [params.id]);
+
+  const fetchSeasonStatus = async () => {
+    try {
+      const seasonId = typeof window !== "undefined" ? localStorage.getItem("selectedSeason") : null;
+      if (!seasonId) return;
+      const seasonRes = (await seasonAPI.getById(seasonId)) as unknown as { season?: { endDate?: string }; endDate?: string };
+      const endDate = seasonRes?.season?.endDate || seasonRes?.endDate;
+      if (endDate) {
+        setIsReadOnly(new Date(endDate) < new Date());
+      }
+    } catch (err) {
+      console.error("Failed to fetch season status", err);
+    }
+  };
 
   const fetchCustomer = async (id: string) => {
     try {
@@ -62,6 +97,20 @@ export default function CustomerDetailPage() {
       setError(err instanceof Error ? err.message : "Failed to fetch customer");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    if (!customer) return;
+    try {
+      setSavingDetails(true);
+      await customerAPI.updateProductDetails(customer._id, productDetailsText);
+      setCustomer((prev) => prev ? { ...prev, productDetails: productDetailsText } : prev);
+      setIsEditModalOpen(false);
+    } catch (err) {
+       alert(err instanceof Error ? err.message : "Failed to update product details");
+    } finally {
+      setSavingDetails(false);
     }
   };
 
@@ -174,10 +223,16 @@ export default function CustomerDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Seasons</CardTitle>
+            <CardTitle>Season</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>{customer.seasonNames || "Not assigned"}</p>
+            {customer.seasonNames ? (
+              <Badge variant="outline" className="text-sm font-medium">
+                Season: {customer.seasonNames}
+              </Badge>
+            ) : (
+              <p className="text-muted-foreground">Not assigned</p>
+            )}
           </CardContent>
         </Card>
 
@@ -187,6 +242,38 @@ export default function CustomerDetailPage() {
           </CardHeader>
           <CardContent>
             <p>{new Date(customer.createdAt).toLocaleDateString()}</p>
+          </CardContent>
+        </Card>
+
+        {/* Product Details Card */}
+        <Card className="md:col-span-2 lg:col-span-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Product Details
+            </CardTitle>
+            {!isReadOnly && customer.status === "approved" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setProductDetailsText(customer.productDetails || "");
+                  setIsEditModalOpen(true);
+                }}
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Edit Details
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="bg-muted/30 p-4 rounded-xl min-h-[100px] border border-border">
+              {customer.productDetails ? (
+                <p className="whitespace-pre-wrap">{customer.productDetails}</p>
+              ) : (
+                <p className="text-muted-foreground italic">No product details have been added yet.</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -213,6 +300,32 @@ export default function CustomerDetailPage() {
           </div>
         </>
       )}
+
+      {/* Edit Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Product Details</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={productDetailsText}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setProductDetailsText(e.target.value)}
+              placeholder="Enter product details (e.g., Size: XL, Color: Blue)..."
+              className="min-h-[150px] resize-y"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={savingDetails}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveDetails} disabled={savingDetails} className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black font-bold">
+              {savingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -26,9 +26,30 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, Search, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  MoreHorizontal,
+  Eye,
+  Search,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Package,
+  Plus,
+  Edit2,
+  Loader2,
+} from "lucide-react";
 import type { Customer } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { customerAPI, seasonAPI } from "@/lib/api";
+import { useEffect } from "react";
 
 // ----------------------
 // TYPES
@@ -64,6 +85,52 @@ export function CustomerTable({
   const [statusFilter, setStatusFilter] = useState("all");
   const [promoterFilter, setPromoterFilter] = useState("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  // ✅ Product Detail States
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [productDetailsText, setProductDetailsText] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  useEffect(() => {
+    const fetchSeasonStatus = async () => {
+      try {
+        const seasonId =
+          typeof window !== "undefined"
+            ? localStorage.getItem("selectedSeason")
+            : null;
+        if (!seasonId) return;
+        const seasonRes = (await seasonAPI.getById(seasonId)) as unknown as { season?: { endDate?: string }; endDate?: string };
+        const endDate = seasonRes?.season?.endDate || seasonRes?.endDate;
+        if (endDate) {
+          setIsReadOnly(new Date(endDate) < new Date());
+        }
+      } catch (err) {
+        console.error("Failed to fetch season status", err);
+      }
+    };
+    fetchSeasonStatus();
+  }, []);
+
+  const handleUpdateProductDetails = async () => {
+    if (!editingCustomer) return;
+    try {
+      setSavingDetails(true);
+      await customerAPI.updateProductDetails(
+        editingCustomer._id,
+        productDetailsText
+      );
+      // Update local state if needed (re-fetch handled by parent usually)
+      if (fetchNewCustomers) await fetchNewCustomers();
+      setEditingCustomer(null);
+    } catch (err) {
+      alert(
+        err instanceof Error ? err.message : "Failed to update product details"
+      );
+    } finally {
+      setSavingDetails(false);
+    }
+  };
   
   // ✅ Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -200,8 +267,29 @@ export function CustomerTable({
             ) : (
               paginatedCustomers.map((customer) => (
                 <TableRow key={customer._id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-bold py-4 px-6 truncate max-w-[150px]">
-                    {customer.username}
+                  <TableCell className="font-bold py-4 px-6 truncate max-w-[200px]">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="leading-none">{customer.username}</span>
+                      {customer.productDetails ? (
+                        <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded text-[10px] w-fit font-bold uppercase tracking-wider">
+                          <Package className="h-3 w-3" />
+                          {customer.productDetails}
+                        </div>
+                      ) : (
+                        !isReadOnly && customer.status === "approved" && (
+                          <button
+                            onClick={() => {
+                              setEditingCustomer(customer);
+                              setProductDetailsText("");
+                            }}
+                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors font-bold uppercase tracking-wider"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Add Product
+                          </button>
+                        )
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{customer.email}</TableCell>
                   <TableCell className="text-muted-foreground">{customer.mobile || customer.phone || "N/A"}</TableCell>
@@ -244,6 +332,30 @@ export function CustomerTable({
                             </Link>
                           </DropdownMenuItem>
 
+                          {!isReadOnly && customer.status === "approved" && (
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={() => {
+                                setEditingCustomer(customer);
+                                setProductDetailsText(
+                                  customer.productDetails || ""
+                                );
+                              }}
+                            >
+                              {customer.productDetails ? (
+                                <>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit Product
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Add Product
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          )}
+
                           {customer.status === "pending" && handleApprove && (
                             <DropdownMenuItem
                               disabled={approvingId === customer._id}
@@ -257,7 +369,7 @@ export function CustomerTable({
                                     promoterId:
                                       customer.promoter?._id?.toString() || "",
                                     seasonId:
-                                      customer.seasons?.[0]?._id?.toString() ||
+                                      (customer as unknown as Record<string, unknown>).season?.toString() || customer.seasonId || customer.seasons?.[0]?._id?.toString() ||
                                       "",
                                   });
                                 } finally {
@@ -338,6 +450,50 @@ export function CustomerTable({
           </div>
         </div>
       )}
+      {/* ✅ Product Detail Edit Modal */}
+      <Dialog
+        open={!!editingCustomer}
+        onOpenChange={(open) => !open && setEditingCustomer(null)}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              {editingCustomer?.productDetails ? "Edit" : "Add"} Product Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-none">
+              Customer: {editingCustomer?.username}
+            </p>
+            <Textarea
+              value={productDetailsText}
+              onChange={(e) => setProductDetailsText(e.target.value)}
+              placeholder="Enter product details (e.g., Size: XL, Color: Blue)..."
+              className="min-h-[150px] resize-y"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingCustomer(null)}
+              disabled={savingDetails}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateProductDetails}
+              disabled={savingDetails}
+              className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black font-bold"
+            >
+              {savingDetails && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {editingCustomer?.productDetails ? "Update" : "Add"} Product
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
